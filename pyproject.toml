@@ -17,6 +17,7 @@ include = [
 
 [tool.poetry.dependencies]
 async-timeout = "^4.0.1"
+cryptography = "^35.0.0"
 logbook = "^1.5.3"
 pygasus = "^0.6"
 python = "3.9"

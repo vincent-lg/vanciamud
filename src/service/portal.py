@@ -42,7 +42,7 @@ class Service(BaseService):
     """Portal service."""
 
     name = "portal"
-    sub_services = ("crux",)
+    sub_services = ("crux", "telnet")
 
     @property
     def hosts(self):

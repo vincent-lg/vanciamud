@@ -1,0 +1,32 @@
+[tool.black]
+line-length = 79
+
+[tool.poetry]
+name = "talismud"
+version = "0.1.0"
+description = "A MUD engine written in Python."
+authors = ["Vincent Le Goff <vincent.legoff.srs@gmail.com>"]
+license = "BSD-3-Clause"
+keywords = ['MUD', 'game', 'text']
+homepage = "https://talismud.planio.com/projects/talismud?jump=home"
+documentation = "https://github.com/talismud/talismud"
+readme = 'README.md'  # Markdown files are supported
+include = [
+    "LICENSE",
+]
+
+[tool.poetry.dependencies]
+async-timeout = "^4.0.1"
+logbook = "^1.5.3"
+pygasus = "^0.6"
+python = "3.9"
+
+[tool.poetry.dev-dependencies]
+pytest-cov = "^3.0.0"
+black = "^21.9b0"
+flake8 = "^4.0.1"
+pytest = "^6.2.5"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

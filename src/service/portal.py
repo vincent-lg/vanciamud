@@ -35,6 +35,7 @@ import time
 from uuid import UUID
 
 from service.base import BaseService
+from service.origin import Origin
 
 
 class Service(BaseService):
@@ -127,7 +128,7 @@ class Service(BaseService):
             pass
 
     async def handle_register_game(
-        self, reader: asyncio.StreamReader, pid: int, has_admin: bool = False
+        self, origin: Origin, pid: int, has_admin: bool = False
     ):
         """A new game process wants to be registered.
 
@@ -141,16 +142,7 @@ class Service(BaseService):
         It will then broadcast a `registered_game` to all, with this ID.
 
         """
-        print(reader, hash(reader))
-        print(self.hosts)
-        writer = self.hosts.get(reader)
-        if writer is None:
-            self.logger.error(
-                "A game wishes to be registered but there's no active "
-                "writer/reader pair for the socket."
-            )
-            return
-
+        writer = origin.writer
         peer_name = writer.get_extra_info("peername")
         game_id = "UNKNOWN"
         if peer_name:
@@ -160,37 +152,26 @@ class Service(BaseService):
         self.logger.debug(f"Receive register_game for ID={game_id}, PID={pid}")
         self.game_id = game_id
         self.game_pid = pid
-        self.game_reader = reader
+        self.game_reader = origin.reader
         self.game_writer = writer
         await self.cleanup_watch_return_code()
-        # sessions = list(self.services["telnet"].sessions.keys())
-        sessions = []
-        for writer in tuple(self.hosts.values()):
-            await self.services["crux"].send_cmd(
-                writer,
-                "registered_game",
-                dict(
-                    game_id=game_id,
-                    sessions=sessions,
-                    pid=pid,
-                    has_admin=has_admin,
-                ),
-            )
 
-    async def handle_what_game_id(self, reader: asyncio.StreamReader):
+        crux = self.services["crux"]
+        sessions = []
+        info = dict(
+            game_id=game_id, sessions=sessions, pid=pid, has_admin=has_admin
+        )
+        await crux.answer(origin, info)
+        # sessions = list(self.services["telnet"].sessions.keys())
+        for writer in tuple(self.hosts.values()):
+            await crux.send_cmd(writer, "registered_game", info)
+
+    async def handle_what_game_id(self, origin: Origin):
         """Return the game ID to the one querying for it."""
         crux = self.services["crux"]
-        writer = self.hosts.get(reader)
-        if writer is None:
-            self.logger.error(
-                "A HOST wishes for the game_id, but the HOST writer can't "
-                "be found."
-            )
-            return
+        await crux.answer(origin, "game_id", dict(game_id=self.game_id))
 
-        await crux.send_cmd(writer, "game_id", dict(game_id=self.game_id))
-
-    async def handle_start_game(self, reader: asyncio.StreamReader):
+    async def handle_start_game(self, origin: Origin):
         """Handle the start_game command."""
         if self.game_pid and self.game_process:
             # The game is already running.
@@ -210,7 +191,7 @@ class Service(BaseService):
         self.game_process = self.process.start_process("game")
         await self.start_watch_return_code()
 
-    async def handle_stop_game(self, reader: asyncio.StreamReader):
+    async def handle_stop_game(self, origin: Origin):
         """Handle the stop_game command."""
         crux = self.services["crux"]
         if self.game_writer:
@@ -244,7 +225,7 @@ class Service(BaseService):
 
     async def handle_restart_game(
         self,
-        reader: asyncio.StreamReader,
+        origin: Origin,
         announce: bool = True,
     ):
         """Restart the game."""
@@ -256,19 +237,19 @@ class Service(BaseService):
             # for session_id in telnet.sessions.keys():
             #    await telnet.write_to(session_id, "Restarting the game ...")
 
-        await self.handle_stop_game(reader)
-        origin = time.time()
-        while time.time() - origin < 5:
+        await self.handle_stop_game(origin.reader)
+        begin = time.time()
+        while time.time() - begin < 5:
             if self.game_id is None:
                 self.logger.debug("The game was stopped, now start it again.")
-                await self.handle_start_game(reader)
+                await self.handle_start_game(origin.reader)
                 break
 
             await asyncio.sleep(0.1)
 
         # Wait for the game to register again.
-        origin = time.time()
-        while time.time() - origin < 5:
+        begin = time.time()
+        while time.time() - begin < 5:
             if self.game_id:
                 break
 
@@ -284,14 +265,14 @@ class Service(BaseService):
             # for session_id in telnet.sessions.keys():
             #    await telnet.write_to(session_id, "... game restarted!")
 
-    async def handle_stop_portal(self, reader: asyncio.StreamReader):
+    async def handle_stop_portal(self, origin: Origin):
         """Handle the stop_portal command."""
-        await self.handle_stop_game(reader)
+        await self.handle_stop_game(origin.reader)
         self.process.should_stop.set()
 
     async def handle_output(
         self,
-        reader: asyncio.StreamReader,
+        origin: Origin,
         session_id: UUID,
         output: bytes,
     ):
@@ -302,7 +283,7 @@ class Service(BaseService):
 
     async def handle_disconnect_session(
         self,
-        reader: asyncio.StreamReader,
+        origin: Origin,
         session_id: UUID,
     ):
         """Disconnect the given session from Telnet service.
@@ -316,58 +297,3 @@ class Service(BaseService):
         return
         telnet = self.services["telnet"]
         await telnet.disconnect_session(session_id)
-
-    async def handle_create_admin(
-        self,
-        reader: asyncio.StreamReader,
-        username: str,
-        password: str,
-        email: str = "",
-        blueprint: bool = False,
-    ):
-        """Send a 'create_admin' command to the game, to create a new admin.
-
-        Args:
-            reader (StreamReader): the reader for this command.
-            username (str): the username to create.
-            password (str): the plain text password to use.
-            email (str, optional): the new account's email address.
-
-        Response:
-            The 'created_admin' command with the result.
-
-        """
-        crux = self.services["crux"]
-        if self.game_writer:
-            self.logger.debug(
-                f"Sending 'create_admin' to game ID {self.game_id}..."
-            )
-            await crux.send_cmd(
-                self.game_writer,
-                "create_admin",
-                dict(
-                    username=username,
-                    password=password,
-                    email=email,
-                    blueprint=blueprint,
-                ),
-            )
-
-        success, args = await crux.wait_for_cmd(
-            self.game_reader, "created_admin", timeout=60
-        )
-        writer = self.hosts.get(reader, None)
-        if writer:
-            await crux.send_cmd(writer, "created_admin", dict(success=success))
-
-    async def handle_created_admin(
-        self, reader: asyncio.StreamReader, success: bool
-    ):
-        """When the portal receives 'created_admin', do nothing.
-
-        This response is expected from the 'create_admin' handler.
-        Intercepting this response while 'create_admin' hasn't been
-        sent isn't of much use.
-
-        """
-        self.logger.info("An administrator account has been created.")

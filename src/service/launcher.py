@@ -29,11 +29,11 @@
 
 """Launcher service."""
 
-import asyncio
 from enum import Enum, Flag, auto
 from uuid import UUID
 
 from service.base import BaseService
+from service.origin import Origin
 
 
 class MUDOp(Flag):
@@ -110,13 +110,9 @@ class Service(BaseService):
         # Otherwise, check that the game is also running.
         self.operations = MUDOp.PORTAL_ONLINE
         self.status = MUDStatus.PORTAL_ONLINE
-        await host.send_cmd(host.writer, "what_game_id")
+        args = await host.wait_for_answer(host.writer, "what_game_id")
 
-        # Wait for the reply.
-        success, args = await host.wait_for_cmd(
-            host.reader, "game_id", timeout=5
-        )
-        if not success:
+        if args is None:
             host.max_attempts = max_attempts
             host.timeout = timeout
             return False
@@ -133,7 +129,7 @@ class Service(BaseService):
     # Command handlers
     async def handle_registered_game(
         self,
-        reader: asyncio.StreamReader,
+        origin: Origin,
         game_id: str,
         sessions: list[UUID],
         **kwargs,
@@ -141,11 +137,11 @@ class Service(BaseService):
         """The game service has been registered by CRUX."""
         pass
 
-    async def handle_game_id(self, reader, game_id):
+    async def handle_game_id(self, origi9n: Origin, game_id: str):
         """A game ID has been sent by the portal, do nothing."""
         pass
 
-    async def handle_game_stopped(self, reader):
+    async def handle_game_stopped(self, origin: Origin):
         """The game service has been registered by CRUX."""
         pass
 

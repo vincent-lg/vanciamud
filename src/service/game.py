@@ -29,10 +29,10 @@
 
 """Game service."""
 
-import asyncio
 from uuid import UUID
 
 from service.base import BaseService
+from service.origin import Origin
 
 
 class Service(BaseService):
@@ -98,18 +98,18 @@ class Service(BaseService):
     # Command handlers
     async def handle_registered_game(
         self,
-        reader: asyncio.StreamReader,
+        origin: Origin,
         game_id: str,
         sessions: list[UUID],
         **kwargs,
     ):
         """A new game process wants to be registered."""
-        self.logger.debug(f"Receive registered_game for ID {game_id}")
+        self.logger.info(f"The game is now registered under ID {game_id}")
         self.game_id = game_id
 
-    async def handle_stop_game(self, reader, game_id):
+    async def handle_stop_game(self, origin: Origin, game_id: str):
         """Stop this game process."""
-        self.logger.debug(f"Receive stop_game for ID {game_id}")
+        self.logger.info(f"The game of ID {game_id} is asked to stop.")
         if self.game_id == game_id:
             self.logger.debug("Shutting down the game...")
             self.process.should_stop.set()

@@ -176,7 +176,7 @@ class Service(CmdMixin, BaseService):
         if self.connected:
             await self.call_hook("connected", writer)
             self.reading_task = asyncio.create_task(
-                self.read_commands(self.reader)
+                self.read_commands(self.reader, self.writer)
             )
         else:
             await self.call_hook("cannot_connect")

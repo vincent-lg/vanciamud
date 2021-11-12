@@ -125,7 +125,7 @@ class Service(CmdMixin, BaseService):
         self.writers[writer] = reader
 
         try:
-            await self.read_commands(reader)
+            await self.read_commands(reader, writer)
         except asyncio.CancelledError:
             pass
 

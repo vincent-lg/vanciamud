@@ -39,12 +39,15 @@ communication is similar.
 """
 
 import asyncio
+from itertools import count
 import pickle
 from struct import calcsize, error as struct_error, pack, unpack
 import time
 from typing import Any, Optional
 
 from async_timeout import timeout as async_timeout
+
+from service.origin import Origin
 
 # Constants
 INITIAL_PACKET_FORMAT_STRING = "!Q"
@@ -72,13 +75,17 @@ class CmdMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.commands = {}
+        self.answers = {}
+        self.cmd_id = count(0)
 
     async def init(self):
         """The service is initialized."""
         self.register_hook("error_read")
         self.register_hook("error_write")
 
-    async def read_commands(self, reader):
+    async def read_commands(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ):
         """Enter an asynchronous loop to read commands from `reader`."""
         # Creates the asynchronous queue for the reader if it doesn't exist:
         queue = self.commands.get(reader)
@@ -157,19 +164,27 @@ class CmdMixin:
                 # An object has been unpickled.
                 # If it's a command, it should be a tuple (str, {arguments})
                 # NOTE: this might benefit from match when match is available.
-                await self.parse_and_process_command(reader, queue, obj)
+                await self.parse_and_process_command(
+                    reader, writer, queue, obj
+                )
 
     async def parse_and_process_command(
-        self, reader: asyncio.StreamReader, queue: asyncio.Queue, cmd: Any
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        queue: asyncio.Queue,
+        cmd: Any,
     ):
         """Parse and process the CRUX command.
 
-        The command object should be a tuple of two elements:
-        the command name and the command arguments in a dictionary.
+        The command object should be a tuple of three elements:
+        the command name, the command ID and the command arguments
+        in a dictionary.
         However, this will be tested in the following method.
 
         Args:
             reader (StreamReader): the reader object.
+            writer (StreamWriter): the writer to answer to this command.
             queue (asyncio.Queue): the command queue for this reader.
             cmd (Any): the command object.
 
@@ -178,20 +193,24 @@ class CmdMixin:
             self.logger.debug(
                 f"Buffer: invalid command, {cmd!r} isn't a tuple"
             )
-        elif len(cmd) != 2:
+        elif len(cmd) != 3:
             self.logger.debug(
-                f"Buffer: invalid command, {cmd!r} should be of length 2"
+                f"Buffer: invalid command, {cmd!r} should be of length 3"
             )
         elif not isinstance(cmd[0], str):
             self.logger.debug(
                 f"Buffer: invalid command, {cmd[0]!r} should be a string"
             )
-        elif not isinstance(cmd[1], dict):
+        elif not isinstance(cmd[1], int):
+            self.logger.debug(
+                f"Buffer: invalid command, {cmd[1]!r} should be an integer"
+            )
+        elif not isinstance(cmd[2], dict):
             self.logger.debug(
                 f"Buffer: invalid command, {cmd[1]!r} should "
                 "be a dictionary"
             )
-        elif not all(isinstance(key, str) for key in cmd[1].keys()):
+        elif not all(isinstance(key, str) for key in cmd[2].keys()):
             self.logger.debug(
                 f"Buffer: invalid command, {cmd[1]!r} should be "
                 "a dictionary with string as keys"
@@ -199,21 +218,35 @@ class CmdMixin:
         else:
             # Valid command, process it.
             await queue.put(cmd)
-            cmd, kwargs = cmd
-            await self.process_command(reader, cmd, kwargs)
+            cmd, cmd_id, kwargs = cmd
+            await self.process_command(reader, writer, cmd, cmd_id, kwargs)
 
-    async def process_command(self, reader, cmd: str, kwargs: dict[str, Any]):
+    async def process_command(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        cmd: str,
+        cmd_id: int,
+        kwargs: dict[str, Any],
+    ):
         """Process a command sent by `reader`.
 
         Args:
             reader (StreamReader): the stream reader that read this command.
+            writer (StreamWriter): the writer to answer to this command.
             cmd (str): the command name.
+            cmd_id (int): the command identifier.
             kwargs (dict): the command arguments.
 
         The method to handle this command will be searched in this
         service and in parent services.
 
         """
+        # 'answer' is handled in a different way.
+        if cmd == "answer":
+            self.answers[cmd_id] = kwargs
+            return
+
         service = self
         while (method := getattr(service, f"handle_{cmd}", None)) is None:
             service = service.parent
@@ -221,8 +254,9 @@ class CmdMixin:
                 break
 
         if method:
+            origin = Origin(id=cmd_id, reader=reader, writer=writer)
             try:
-                await method(reader, **kwargs)
+                await method(origin, **kwargs)
             except asyncio.CancelledError:
                 pass
             except Exception:
@@ -240,18 +274,20 @@ class CmdMixin:
         writer: asyncio.StreamWriter,
         cmd_name: str,
         args: Optional[dict[str, Any]] = None,
+        cmd_id: Optional[int] = None,
     ):
-        """
-        Send a command to writer, as a tuple.
+        """Send a command to writer, as a tuple.
 
         Args:
             writer (StreamWriter): to whom to send this command.
             cmd_name (str): the command name.
             args (dict, opt): the arguments to pickle.
+            cmd_id (int, optional): the command ID.
 
         """
+        cmd_id = cmd_id or next(self.cmd_id)
         args = args or {}
-        encoded = pickle.dumps((cmd_name, args))
+        encoded = pickle.dumps((cmd_name, cmd_id, args))
         initial_packet = pack(INITIAL_PACKET_FORMAT_STRING, len(encoded))
         stream = initial_packet + encoded
 
@@ -305,8 +341,64 @@ class CmdMixin:
                         return (False, {})
 
                     if cmd_name == "*" or received[0] == cmd_name:
-                        return (True, received[1])
+                        return (True, received[2])
         except (asyncio.CancelledError, asyncio.TimeoutError):
             return (False, {})
         except Exception:
             self.logger.exception("An error occurred while waiting.")
+
+    async def answer(self, origin: Origin, args: dict[str, Any]):
+        """Answer to this CRUX message.
+
+        This method is usually called inside a `handle_...` method,
+        where the handler has to answer to a specific query, usually
+        for information.  This answer can be intercepted
+        by the caller, using `wait_for_answer`.  The command
+        ID is used to identify the request as coming from a given origin.
+
+        Args:
+            origin (Origin): the packet containing the origin information.
+            args (dict): the answer as a dictionary.
+
+        """
+        writer = origin.writer
+        if writer is None:
+            self.logger.warning(
+                f"Trying to answer to packet ID {origin.id}, "
+                "but no writer is available to reach it"
+            )
+
+        await self.send_cmd(writer, "answer", args)
+
+    async def wait_for_answer(
+        self,
+        writer: asyncio.StreamWriter,
+        cmd_name: str,
+        args: dict[str, Any],
+        timeout: float = 5.0,
+    ) -> dict[str, Any]:
+        """Send the command and wait for the answer.
+
+        Args:
+            writer (StreamWriter): the writer to which to send this command.
+            cmd_name (str): the command name to call.
+            args (dict): the arguments to send this command.
+            timeout (float, optional): the timeout in seconds.
+
+        Returns:
+            status (dict or None): if successful, return the status
+                    as a dictionary.  If not, return None.
+
+        """
+        begin = time.time()
+        cmd_id = next(self.cmd_id)
+        await self.send_cmd(writer, cmd_name, args, cmd_id=cmd_id)
+
+        # Wait for the answer, following the timeout.
+        while (result := self.answers.pop(cmd_id, None)) is None:
+            await asyncio.sleep(0.05)
+            if timeout is None or time.time() - begin < timeout:
+                # We have waited long enough, end here.
+                break
+
+        return result

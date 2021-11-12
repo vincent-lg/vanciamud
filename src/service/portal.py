@@ -166,7 +166,7 @@ class Service(BaseService):
     async def handle_what_game_id(self, origin: Origin):
         """Return the game ID to the one querying for it."""
         crux = self.services["crux"]
-        await crux.answer(origin, "game_id", dict(game_id=self.game_id))
+        await crux.answer(origin, dict(game_id=self.game_id))
 
     async def handle_start_game(self, origin: Origin):
         """Handle the start_game command."""

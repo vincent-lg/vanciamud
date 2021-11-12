@@ -285,7 +285,7 @@ class CmdMixin:
             cmd_id (int, optional): the command ID.
 
         """
-        cmd_id = cmd_id or next(self.cmd_id)
+        cmd_id = next(self.cmd_id) if cmd_id is None else cmd_id
         args = args or {}
         encoded = pickle.dumps((cmd_name, cmd_id, args))
         initial_packet = pack(INITIAL_PACKET_FORMAT_STRING, len(encoded))
@@ -368,13 +368,13 @@ class CmdMixin:
                 "but no writer is available to reach it"
             )
 
-        await self.send_cmd(writer, "answer", args)
+        await self.send_cmd(writer, "answer", args, cmd_id=origin.id)
 
     async def wait_for_answer(
         self,
         writer: asyncio.StreamWriter,
         cmd_name: str,
-        args: dict[str, Any],
+        args: Optional[dict[str, Any]] = None,
         timeout: float = 5.0,
     ) -> dict[str, Any]:
         """Send the command and wait for the answer.
@@ -390,6 +390,7 @@ class CmdMixin:
                     as a dictionary.  If not, return None.
 
         """
+        args = {} if args is None else args
         begin = time.time()
         cmd_id = next(self.cmd_id)
         await self.send_cmd(writer, cmd_name, args, cmd_id=cmd_id)
@@ -397,7 +398,7 @@ class CmdMixin:
         # Wait for the answer, following the timeout.
         while (result := self.answers.pop(cmd_id, None)) is None:
             await asyncio.sleep(0.05)
-            if timeout is None or time.time() - begin < timeout:
+            if timeout is not None and time.time() - begin >= timeout:
                 # We have waited long enough, end here.
                 break
 

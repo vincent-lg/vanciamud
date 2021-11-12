@@ -55,6 +55,10 @@ sub_stop = subparsers.add_parser(
 sub_stop.set_defaults(action="stop")
 sub_restart = subparsers.add_parser("restart", help="restart the game process")
 sub_restart.set_defaults(action="restart")
+sub_status = subparsers.add_parser(
+    "status", help="retrieve the status of the portal and game processes"
+)
+sub_status.set_defaults(action="status")
 
 
 class Launcher(Process):
@@ -79,12 +83,10 @@ class Launcher(Process):
         args = parser.parse_args()
 
         launcher = self.services["launcher"]
-        if args.action == "start":
-            await launcher.action_start()
-        elif args.action == "stop":
-            await launcher.action_stop()
-        elif args.action == "restart":
-            await launcher.action_restart()
+        action = args.action
+        method = getattr(launcher, f"action_{action}", None)
+        if method:
+            await method(args)
         else:
             parser.print_help()
 

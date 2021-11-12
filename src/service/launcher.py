@@ -29,6 +29,7 @@
 
 """Launcher service."""
 
+import argparse
 from enum import Enum, Flag, auto
 from uuid import UUID
 
@@ -110,16 +111,16 @@ class Service(BaseService):
         # Otherwise, check that the game is also running.
         self.operations = MUDOp.PORTAL_ONLINE
         self.status = MUDStatus.PORTAL_ONLINE
-        args = await host.wait_for_answer(host.writer, "what_game_id")
+        result = await host.wait_for_answer(host.writer, "what_game_id")
 
-        if args is None:
+        if result is None:
             host.max_attempts = max_attempts
             host.timeout = timeout
             return False
 
         host.max_attempts = max_attempts
         host.timeout = timeout
-        if args.get("game_id"):
+        if result.get("game_id"):
             self.operations |= MUDOp.GAME_ONLINE
             if need_admin:
                 self.operations |= MUDOp.NEED_ADMIN
@@ -146,7 +147,7 @@ class Service(BaseService):
         pass
 
     # User actions
-    async def action_start(self) -> bool:
+    async def action_start(self, args: argparse.ArgumentParser) -> bool:
         """Start the game.
 
         Return whether the game was correctly started.
@@ -215,15 +216,15 @@ class Service(BaseService):
 
         # 5. The game process will send a 'register_game' command to CRUX.
         # 6. ... so wait for the 'registered_game' command to be received.
-        success, args = await host.wait_for_cmd(
+        success, result = await host.wait_for_cmd(
             host.reader, "registered_game", timeout=10
         )
         if success:
             self.operations = MUDOp.PORTAL_ONLINE | MUDOp.GAME_ONLINE
             self.status = MUDStatus.ALL_ONLINE
-            game_id = args.get("game_id", "UNKNOWN")
-            pid = args.get("pid", "UNKNOWN")
-            self.has_admin = has_admin = args.get("has_admin", False)
+            game_id = result.get("game_id", "UNKNOWN")
+            pid = result.get("pid", "UNKNOWN")
+            self.has_admin = has_admin = result.get("has_admin", False)
             if not has_admin:
                 self.operations |= MUDOp.NEED_ADMIN
             self.logger.info(
@@ -240,7 +241,7 @@ class Service(BaseService):
             )
             return False
 
-    async def action_stop(self):
+    async def action_stop(self, args: argparse.ArgumentParser):
         """Stop the game and portal process.
 
         Order of operations:
@@ -274,8 +275,8 @@ class Service(BaseService):
         await host.send_cmd(host.writer, "stop_portal")
 
         # 4. Wait for any command to be received.  None should.
-        while args := await host.wait_for_cmd(host.reader, "*", timeout=0.1):
-            success, args = args
+        while result := await host.wait_for_cmd(host.reader, "*", timeout=0.1):
+            success, _ = result
             if not success:
                 break
 
@@ -290,7 +291,7 @@ class Service(BaseService):
             self.status = MUDStatus.OFFLINE
             self.logger.info("... portal and game stopped.")
 
-    async def action_restart(self):
+    async def action_restart(self, args: argparse.ArgumentParser):
         """Restart the game, maintains the portal.
 
         Order of operations:
@@ -336,7 +337,7 @@ class Service(BaseService):
         # 3. The portal should stop the game process...
         # ... and restart it.
         # 4. Listen for the 'stopped_game' command.
-        success, args = await host.wait_for_cmd(
+        success, _ = await host.wait_for_cmd(
             host.reader, "game_stopped", timeout=10
         )
         if not success:
@@ -351,13 +352,13 @@ class Service(BaseService):
         self.logger.info("Start game ...")
         # 6. The game process will send a 'register_game' command to CRUX.
         # 7. ... so wait for the 'registered_game' command to be received.
-        success, args = await host.wait_for_cmd(
+        success, result = await host.wait_for_cmd(
             host.reader, "registered_game", timeout=10
         )
         if success:
             self.operations = MUDOp.PORTAL_ONLINE | MUDOp.GAME_ONLINE
             self.status = MUDStatus.ALL_ONLINE
-            game_id = args.get("game_id", "UNKNOWN")
+            game_id = result.get("game_id", "UNKNOWN")
             self.logger.info(f"... game started (id={game_id}).")
         else:
             self.operations = MUDOp.PORTAL_ONLINE
@@ -366,3 +367,17 @@ class Service(BaseService):
                 "The game hasn't started.  See logs/game.log "
                 "for more information."
             )
+
+    async def action_status(self, args: argparse.ArgumentParser):
+        """Print the portal and game status."""
+        await self.check_status()
+        if self.status is MUDStatus.OFFLINE:
+            self.logger.info(
+                "The MUD isn't running, neither portal nor game have started."
+            )
+        elif self.status is MUDStatus.PORTAL_ONLINE:
+            self.logger.info(
+                "The portal is running, but the game isn't running yet."
+            )
+        elif self.status is MUDStatus.ALL_ONLINE:
+            self.logger.info("Portal and game are both running.")

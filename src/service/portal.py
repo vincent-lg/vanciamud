@@ -133,7 +133,7 @@ class Service(BaseService):
         """A new game process wants to be registered.
 
         Args:
-            reader (StreamReader): the reader associated with this command.
+            origin (Origin): origin of the request.
             pid (int): the game's Process ID.
             has_admin (bool, optional): whether an admin character exists.
 
@@ -161,10 +161,7 @@ class Service(BaseService):
         info = dict(
             game_id=game_id, sessions=sessions, pid=pid, has_admin=has_admin
         )
-        await crux.answer(origin, info)
-        # sessions = list(self.services["telnet"].sessions.keys())
-        for writer in tuple(self.hosts.values()):
-            await crux.send_cmd(writer, "registered_game", info)
+        await crux.broadcast("registered_game", info)
 
     async def handle_what_game_id(self, origin: Origin):
         """Return the game ID to the one querying for it."""
@@ -186,8 +183,8 @@ class Service(BaseService):
             self.game_process.communicate()
             self.game_pid = None
             self.game_process = None
+            await self.cleanup_watch_return_code()
 
-        await self.cleanup_watch_return_code()
         self.game_process = self.process.start_process("game")
         await self.start_watch_return_code()
 

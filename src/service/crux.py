@@ -38,6 +38,7 @@ implementation is responsible for deciding what to do with these messages.
 """
 
 import asyncio
+from typing import Any, Optional
 
 from service.base import BaseService
 from service.cmd import CmdMixin
@@ -128,6 +129,25 @@ class Service(CmdMixin, BaseService):
             await self.read_commands(reader, writer)
         except asyncio.CancelledError:
             pass
+
+    async def broadcast(
+        self, cmd_name: str, args: Optional[dict[str, Any]] = None
+    ):
+        """Broadcast a message to all connected HOST clients.
+
+        Args:
+            cmd_name (str): the command to send.
+            args (dict): the command arguments.
+
+        For all connected HOST clients, send the command with a different
+        command ID.  This cannot effectively be used to retrieve
+        answers from clients, but to inform them of a change
+        they should note.
+
+        """
+        args = {} if args is None else args
+        for writer in tuple(self.readers.values()):
+            await self.send_cmd(writer, cmd_name, args)
 
     async def error_read(self, reader):
         """An error occurred when reading from reader."""

@@ -135,7 +135,10 @@ class Service(CmdMixin, BaseService):
 
         try:
             server = await asyncio.start_server(
-                self.new_connection, interface, port, ssl=ssl_ctx
+                self.new_ssl_connection if ssl else self.new_connection,
+                interface,
+                port,
+                ssl=ssl_ctx,
             )
         except asyncio.CancelledError:
             pass
@@ -163,7 +166,20 @@ class Service(CmdMixin, BaseService):
     ):
         """Handle a new connection."""
         try:
-            await self.begin_reading_from(reader, writer)
+            await self.begin_reading_from(reader, writer, ssl=False)
+        except asyncio.CancelledError:
+            return
+        except Exception:
+            self.logger.exception(
+                "telnet: an error occurred when reading a stream:"
+            )
+
+    async def new_ssl_connection(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ):
+        """Handle a new secure connection."""
+        try:
+            await self.begin_reading_from(reader, writer, ssl=True)
         except asyncio.CancelledError:
             return
         except Exception:
@@ -172,14 +188,18 @@ class Service(CmdMixin, BaseService):
             )
 
     async def begin_reading_from(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        ssl: bool,
     ):
         """Begin to read from a given connection."""
         addr = writer.get_extra_info("peername")
         session_id = uuid4()
         await self.new_session(session_id, reader, writer)
         self.logger.info(
-            f"telnet: connection from {addr}: new session {session_id}"
+            f"telnet{'(ssl)' if ssl else ''}: connection "
+            f"from {addr}: new session {session_id}"
         )
 
         try:

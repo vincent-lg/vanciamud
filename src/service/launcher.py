@@ -33,6 +33,8 @@ import argparse
 from enum import Enum, Flag, auto
 from uuid import UUID
 
+from beautifultable import BeautifulTable
+
 from service.base import BaseService
 from service.origin import Origin
 
@@ -384,3 +386,32 @@ class Service(BaseService):
             )
         elif self.status is MUDStatus.ALL_ONLINE:
             self.logger.info("Portal and game are both running.")
+
+    async def action_sessions(self, args: argparse.ArgumentParser):
+        """Display the list of sessions."""
+        host = self.services["host"]
+        await self.check_status()
+        if not host.connected:
+            print("The portal doesn't seem to be connected at the moment.")
+            return
+
+        result = await host.wait_for_answer(host.writer, "sessions")
+        sessions = result.get("sessions", {})
+
+        if len(sessions) == 0:
+            print("No session is currently connected to the Telnet portal.")
+            return
+
+        # Display sessions in an ASCII table.
+        table = BeautifulTable()
+        table.columns.header = ("Session ID", "Connection", "Secured")
+        table.columns.header.alignment = BeautifulTable.ALIGN_LEFT
+        table.columns.alignment["Session ID"] = BeautifulTable.ALIGN_LEFT
+        table.columns.alignment["Connection"] = BeautifulTable.ALIGN_RIGHT
+        table.columns.alignment["Secured"] = BeautifulTable.ALIGN_LEFT
+        table.set_style(BeautifulTable.STYLE_NONE)
+
+        for session_id, (creation, secured) in sessions.items():
+            secured = "Yes" if secured else "No"
+            table.rows.append((session_id, creation, secured))
+        print(table)

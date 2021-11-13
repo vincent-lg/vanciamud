@@ -17,6 +17,7 @@ include = [
 
 [tool.poetry.dependencies]
 async-timeout = "^4.0.1"
+beautifultable = "^1.0.1"
 cryptography = "^35.0.0"
 itsdangerous = "^2.0.1"
 keyring = "^23.2.1"

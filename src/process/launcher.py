@@ -59,6 +59,10 @@ sub_status = subparsers.add_parser(
     "status", help="retrieve the status of the portal and game processes"
 )
 sub_status.set_defaults(action="status")
+sub_sessions = subparsers.add_parser(
+    "sessions", help="show the list of connected Telnet sessions"
+)
+sub_sessions.set_defaults(action="sessions")
 
 
 class Launcher(Process):

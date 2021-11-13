@@ -30,6 +30,8 @@
 """Telnet server."""
 
 import asyncio
+from dataclasses import dataclass
+from datetime import datetime
 from io import BytesIO
 from ssl import create_default_context, Purpose
 from typing import Union
@@ -196,27 +198,23 @@ class Service(CmdMixin, BaseService):
         """Begin to read from a given connection."""
         addr = writer.get_extra_info("peername")
         session_id = uuid4()
-        await self.new_session(session_id, reader, writer)
+        session = await self.new_session(session_id, reader, writer, ssl)
         self.logger.info(
             f"telnet{'(ssl)' if ssl else ''}: connection "
             f"from {addr}: new session {session_id}"
         )
 
         try:
-            await self.read_input(reader)
+            await self.read_input(session)
         except asyncio.CancelledError:
             pass
 
-    async def read_input(self, reader: asyncio.StreamReader):
+    async def read_input(self, session: "Session"):
         """Enter an asynchronous loop to read input from `reader`."""
-        session_id, _ = self.readers.get(reader, (None, None))
-        if session_id is None:
-            self.logger.warning(
-                "Trying to listen on a client with no session ID."
-            )
-            return
+        session_id = session.uuid
 
         # Create the buffer for the reader if it doesn't exist:
+        reader = session.reader
         buffer = self.buffers.get(reader)
         if buffer is None:
             buffer = BytesIO()
@@ -232,7 +230,7 @@ class Service(CmdMixin, BaseService):
                 return
             except Exception:
                 self.logger.exception(
-                    "An exception was raised when reading a session"
+                    f"An exception occurred when reading from {session_id}:"
                 )
                 await self.error_read(reader)
                 return
@@ -298,6 +296,7 @@ class Service(CmdMixin, BaseService):
         session_id: UUID,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
+        ssl: bool,
     ):
         """Process a new session.
 
@@ -307,7 +306,14 @@ class Service(CmdMixin, BaseService):
             writer (StreamWriter): the session writer.
 
         """
-        self.sessions[session_id] = (reader, writer)
+        session = Session(
+            uuid=session_id,
+            creation=datetime.utcnow(),
+            reader=reader,
+            writer=writer,
+            secured=ssl,
+        )
+        self.sessions[session_id] = session
         self.readers[reader] = (session_id, writer)
         self.logger.debug(f"telnet: new connection, session ID {session_id}")
         writer = self.parent.game_writer
@@ -323,11 +329,11 @@ class Service(CmdMixin, BaseService):
             session_id (UUID): the session to disconnect.
 
         """
-        reader, writer = self.sessions.pop(session_id, (None, None))
-        if writer:
+        session = self.sessions.pop(session_id, None)
+        if session and session.writer:
             self.logger.debug(f"Diconnection session ID {session_id}.")
-            writer.close()
-            await writer.wait_closed()
+            session.writer.close()
+            await session.writer.wait_closed()
 
     async def send_input(self, session_id: UUID, command: bytes):
         """Called when an input line was sent by the client."""
@@ -368,3 +374,37 @@ class Service(CmdMixin, BaseService):
             except ConnectionError:
                 await self.error_read(reader)
                 return
+
+
+@dataclass(frozen=True)
+class Session:
+
+    """A dataclass to represent a session."""
+
+    uuid: UUID
+    creation: datetime
+    reader: asyncio.StreamReader
+    writer: asyncio.StreamWriter
+    secured: bool
+
+    @property
+    def ago(self) -> str:
+        """Return the user-friendly time of this session."""
+        unit = (datetime.utcnow() - self.creation).total_seconds()
+        for divided_by, lower_or_equal, message in UNITS:
+            unit //= divided_by
+            if lower_or_equal is ... or unit <= lower_or_equal:
+                return message.format(unit=int(unit))
+
+
+UNITS = (
+    (1, 3, "A few seconds ago"),
+    (1, 59, "{unit} seconds ago"),
+    (60, 1, "A minute ago"),
+    (1, 3, "A few minutes ago"),
+    (1, 59, "{unit} minutes ago"),
+    (60, 1, "An hour ago"),
+    (1, 23, "{unit} hours ago"),
+    (24, 1, "A day ago"),
+    (1, ..., "{unit} days ago"),
+)

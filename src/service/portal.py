@@ -294,3 +294,17 @@ class Service(BaseService):
         return
         telnet = self.services["telnet"]
         await telnet.disconnect_session(session_id)
+
+    async def handle_sessions(self, origin: Origin, **kwargs):
+        """Reply with the list of sessions."""
+        crux = self.services["crux"]
+        sessions = {}
+        for session in sorted(
+            tuple(self.services["telnet"].sessions.values()),
+            key=lambda s: s.creation,
+        ):
+            sessions[session.uuid] = (session.ago, session.secured)
+
+        await crux.answer(
+            origin, dict(sessions=sessions)
+        )

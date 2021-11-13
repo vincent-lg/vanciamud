@@ -109,6 +109,7 @@ class Service(BaseService):
             return
 
         # Otherwise, check that the game is also running.
+        self.services["host"].read_secret_key()
         self.operations = MUDOp.PORTAL_ONLINE
         self.status = MUDStatus.PORTAL_ONLINE
         result = await host.wait_for_answer(host.writer, "what_game_id")
@@ -202,10 +203,12 @@ class Service(BaseService):
                 return False
 
             # The portal has started.
+            host.read_secret_key()
             self.operations = MUDOp.STARTING | MUDOp.PORTAL_ONLINE
             self.operations |= MUDOp.PORTAL_ONLINE
             self.logger.info("... portal started.")
         else:
+            host.read_secret_key()
             self.operations |= MUDOp.PORTAL_ONLINE
             self.status = MUDStatus.PORTAL_ONLINE
             self.logger.info("The portal is already running.")

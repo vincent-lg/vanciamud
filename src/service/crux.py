@@ -32,13 +32,19 @@
 cRUX is a thin layer allowing inter-protocol communication.  CRUX
 is a server, a TCP server that accepts messages formatted in a specific
 way.  The CRUX protocol is only started once, by the portal process,
-and then host services connect to it to send messages.  The CRUX
+and then HOST services connect to it to send messages.  The CRUX
 implementation is responsible for deciding what to do with these messages.
+
+Communication implementation (both for the CRUX server and the
+HOST clients) can be found in `service/cmd.py`.
 
 """
 
 import asyncio
+import secrets
 from typing import Any, Optional
+
+import keyring
 
 from service.base import BaseService
 from service.cmd import CmdMixin
@@ -48,7 +54,7 @@ class Service(CmdMixin, BaseService):
 
     """CRUX service, creating a light messaging server.
 
-    This service should be created by the portal (see `process/portal.py`).
+    This service should be created by the portal (see `service/portal.py`).
     Each process can instantiate a HOST service, which is a client
     designed to connect to the CRUX server.  The CRUX is a simple TCP server
     that can be used to trade data with the various processes.
@@ -71,8 +77,15 @@ class Service(CmdMixin, BaseService):
         self.readers = {}
         self.writers = {}
 
+        # Create a random secret key which will be used to sign/unsign
+        # CRUX messages between server and clients.
+        self.logger.debug("Generating a secret key")
+        keyring.set_password("talismud", "CRUX", secrets.token_urlsafe(32))
+        self.read_secret_key()
+
     async def setup(self):
         """Set the CRUX server up."""
+        await super().setup()
         self.schedule_hook("error_read", self.error_read)
         self.schedule_hook("error_write", self.error_write)
         self.serving_task = asyncio.create_task(self.start_serving())
@@ -81,6 +94,9 @@ class Service(CmdMixin, BaseService):
         """Clean the service up before shutting down."""
         if self.serving_task:
             self.serving_task.cancel()
+
+        # Remove the secret key.
+        keyring.delete_password("talismud", "CRUX")
 
     async def start_serving(self):
         """Prepare to serve."""

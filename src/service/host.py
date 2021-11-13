@@ -96,6 +96,7 @@ class Service(CmdMixin, BaseService):
 
     async def setup(self):
         """Set the HOST client up."""
+        await super().setup()
         # If the host service can't read, calls `error_read` asynchronously:
         self.schedule_hook("error_read", self.error_read)
         self.schedule_hook("error_write", self.error_write)

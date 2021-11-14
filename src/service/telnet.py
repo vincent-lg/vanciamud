@@ -33,6 +33,7 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
+from itertools import count
 from ssl import create_default_context, Purpose
 from typing import Union
 from uuid import UUID, uuid4
@@ -65,10 +66,10 @@ class Service(CmdMixin, BaseService):
         self.serving_task = None
         self.serving_ssl_task = None
         self.sessions = {}
-        self.readers = {}
         self.buffers = {}
-        self.current_id = 1
         self.CRUX = None
+        self.stats = []
+        self.input_id = count(1)
 
     async def setup(self):
         """Set the Telnet servers up."""
@@ -224,7 +225,7 @@ class Service(CmdMixin, BaseService):
             try:
                 data = await reader.read(1024)
             except ConnectionError:
-                await self.error_read(reader)
+                await self.error_read(session)
                 return
             except asyncio.CancelledError:
                 return
@@ -232,12 +233,12 @@ class Service(CmdMixin, BaseService):
                 self.logger.exception(
                     f"An exception occurred when reading from {session_id}:"
                 )
-                await self.error_read(reader)
+                await self.error_read(session)
                 return
 
             if not data:
                 # The socket has been disconnected.
-                await self.error_read(reader)
+                await self.error_read(session)
                 return
 
             buffer.write(data)
@@ -256,7 +257,7 @@ class Service(CmdMixin, BaseService):
                     for piece in line.splitlines():
                         # It is possible, though unlikely, that this loop
                         # will be called more than once.
-                        await self.send_input(session_id, piece)
+                        await self.send_input(session, piece)
                 else:
                     unprocessed = line
 
@@ -265,31 +266,20 @@ class Service(CmdMixin, BaseService):
             buffer.truncate()
             buffer.write(unprocessed)
 
-    async def error_read(self, reader: asyncio.StreamReader):
+    async def error_read(self, session: "Session"):
         """An error occurred when reading from reader."""
-        session_id, writer = self.readers.pop(reader, (0, None))
-        if writer is None:
-            self.logger.error(
-                "telnet: connection was lost with a client, but "
-                "the associated writer cannot be found."
-            )
-        else:
-            self.logger.info(
-                f"telnet: the connection to a client {session_id} was closed."
-            )
+        self.sessions.pop(session.uuid, None)
+        self.logger.info(
+            f"telnet: the connection to a client {session.uuid} was closed."
+        )
 
-            try:
-                del self.sessions[session_id]
-            except KeyError:
-                pass
-            finally:
-                writer = self.parent.game_writer
-                if writer:
-                    await self.CRUX.send_cmd(
-                        writer,
-                        "disconnect_session",
-                        dict(session_id=session_id),
-                    )
+        writer = self.parent.game_writer
+        if writer:
+            await self.CRUX.send_cmd(
+                writer,
+                "disconnect_session",
+                dict(session_id=session.uuid),
+            )
 
     async def new_session(
         self,
@@ -297,7 +287,7 @@ class Service(CmdMixin, BaseService):
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
         ssl: bool,
-    ):
+    ) -> "Session":
         """Process a new session.
 
         Args:
@@ -314,34 +304,46 @@ class Service(CmdMixin, BaseService):
             secured=ssl,
         )
         self.sessions[session_id] = session
-        self.readers[reader] = (session_id, writer)
         self.logger.debug(f"telnet: new connection, session ID {session_id}")
         writer = self.parent.game_writer
         if writer:
             await self.CRUX.send_cmd(
-                writer, "new_session", dict(session_id=session_id)
+                writer, "new_session", dict(session_id=session_id, ssl=ssl)
             )
 
-    async def disconnect_session(self, session_id: UUID):
+        return session
+
+    async def disconnect_session(self, session: "Session"):
         """Disconnect the given session.
 
         Args:
-            session_id (UUID): the session to disconnect.
+            session (Session): the session to disconnect.
 
         """
-        session = self.sessions.pop(session_id, None)
-        if session and session.writer:
-            self.logger.debug(f"Diconnection session ID {session_id}.")
+        if session.writer:
+            self.logger.debug(f"Diconnecting session ID {session.uuid}.")
             session.writer.close()
             await session.writer.wait_closed()
 
-    async def send_input(self, session_id: UUID, command: bytes):
+    async def send_input(self, session: "Session", command: bytes):
         """Called when an input line was sent by the client."""
+        sent = datetime.utcnow()
         writer = self.parent.game_writer
         if writer:
-            await self.CRUX.send_cmd(
-                writer, "input", dict(session_id=session_id, command=command)
+            input_id = next(self.input_id)
+            answer = await self.CRUX.wait_for_answer(
+                writer, "input", dict(
+                    session_id=session.uuid,
+                    command=command,
+                    input_id=input_id,
+                )
             )
+
+            # Answer should contain the time it took to receive this.
+            received = answer.get("received")
+            if received:
+                elapsed = (received - sent).total_seconds()
+                self.record_stat(session.uuid, input_id, command, elapsed)
 
     async def write_to(self, session_id: UUID, message: Union[str, bytes]):
         """Send a message to this session.
@@ -366,14 +368,37 @@ class Service(CmdMixin, BaseService):
 
         message = message.replace(b"\n", b"\r\n")
 
-        reader, writer = self.sessions.get(session_id, (None, None))
-        if writer:
+        session = self.sessions.get(session_id)
+        if session:
             try:
-                writer.write(message)
-                await writer.drain()
+                session.writer.write(message)
+                await session.writer.drain()
             except ConnectionError:
-                await self.error_read(reader)
+                await self.error_read(session)
                 return
+
+    def record_stat(
+        self, session_id: UUID, input_id: int, command: bytes, elapsed: float
+    ):
+        """Record this statistic line, if greater than the Nth line.
+
+        Args:
+            session_id (UUID): the session ID of the input.
+            input_id (int): the ID associated with this input.
+            command (bytes): the command itself.
+            elapsed (float): the number of seconds elapsed.
+
+        """
+        for i, (*_, stat_elapsed) in enumerate(self.stats):
+            if stat_elapsed < elapsed:
+                self.stats.insert(
+                    i, (session_id, input_id, command, time_elapsed)
+                )
+                break
+
+        if len(self.stats) < 5:
+            self.stats.append((session_id, input_id, command, elapsed))
+        self.stats = self.stats[:5]
 
 
 @dataclass(frozen=True)

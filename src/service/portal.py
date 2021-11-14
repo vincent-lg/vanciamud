@@ -308,3 +308,21 @@ class Service(BaseService):
         await crux.answer(
             origin, dict(sessions=sessions)
         )
+
+    async def handle_output(
+        self,
+        origin: Origin,
+        session_id: UUID,
+        output: bytes,
+        input_id: int,
+    ):
+        """Handle output, send it to Telnet.
+
+        Args:
+            session_id (UUID): the session identifier.
+            output (bytes): the output to send.
+            input_id (int): the ID of the input that triggered this output.
+
+        """
+        telnet = self.services["telnet"]
+        await telnet.write_to(session_id, output)

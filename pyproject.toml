@@ -22,7 +22,7 @@ cryptography = "^35.0.0"
 itsdangerous = "^2.0.1"
 keyring = "^23.2.1"
 logbook = "^1.5.3"
-pygasus = "^0.6"
+pygasus = "^0.7"
 python = "3.9"
 
 [tool.poetry.dev-dependencies]

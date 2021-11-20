@@ -198,8 +198,10 @@ class Service(CmdMixin, BaseService):
     ):
         """Begin to read from a given connection."""
         addr = writer.get_extra_info("peername")
-        session_id = uuid4()
-        session = await self.new_session(session_id, reader, writer, ssl)
+        addr = addr[0]
+        while (session_id := uuid4()) in self.sessions:
+            continue
+        session = await self.new_session(session_id, reader, writer, ssl, addr)
         self.logger.info(
             f"telnet{'(ssl)' if ssl else ''}: connection "
             f"from {addr}: new session {session_id}"
@@ -287,6 +289,7 @@ class Service(CmdMixin, BaseService):
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
         ssl: bool,
+        ip_address: str,
     ) -> "Session":
         """Process a new session.
 
@@ -302,6 +305,7 @@ class Service(CmdMixin, BaseService):
             reader=reader,
             writer=writer,
             secured=ssl,
+            ip_address=ip_address,
         )
         self.sessions[session_id] = session
         self.logger.debug(f"telnet: new connection, session ID {session_id}")
@@ -411,6 +415,7 @@ class Session:
     reader: asyncio.StreamReader
     writer: asyncio.StreamWriter
     secured: bool
+    ip_address: str
 
     @property
     def ago(self) -> str:

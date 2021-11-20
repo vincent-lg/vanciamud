@@ -303,7 +303,9 @@ class Service(BaseService):
             tuple(self.services["telnet"].sessions.values()),
             key=lambda s: s.creation,
         ):
-            sessions[session.uuid] = (session.ago, session.secured)
+            sessions[session.uuid] = (
+                session.ip_address, session.ago, session.secured
+            )
 
         await crux.answer(
             origin, dict(sessions=sessions)

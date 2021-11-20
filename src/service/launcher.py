@@ -404,14 +404,15 @@ class Service(BaseService):
 
         # Display sessions in an ASCII table.
         table = BeautifulTable()
-        table.columns.header = ("Session ID", "Connection", "Secured")
+        table.columns.header = ("Session ID", "IP", "Connection", "Secured")
         table.columns.header.alignment = BeautifulTable.ALIGN_LEFT
         table.columns.alignment["Session ID"] = BeautifulTable.ALIGN_LEFT
+        table.columns.alignment["IP"] = BeautifulTable.ALIGN_LEFT
         table.columns.alignment["Connection"] = BeautifulTable.ALIGN_RIGHT
         table.columns.alignment["Secured"] = BeautifulTable.ALIGN_LEFT
         table.set_style(BeautifulTable.STYLE_NONE)
 
-        for session_id, (creation, secured) in sessions.items():
+        for session_id, (ip, creation, secured) in sessions.items():
             secured = "Yes" if secured else "No"
-            table.rows.append((session_id, creation, secured))
+            table.rows.append((session_id.hex, ip, creation, secured))
         print(table)

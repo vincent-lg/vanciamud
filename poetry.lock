@@ -377,7 +377,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [[package]]
 name = "pygasus"
-version = "0.8.1"
+version = "0.8.2"
 description = "A lightweight ORM built on top of Pydantic"
 category = "main"
 optional = false
@@ -885,8 +885,8 @@ pyflakes = [
     {file = "pyflakes-2.4.0.tar.gz", hash = "sha256:05a85c2872edf37a4ed30b0cce2f6093e1d0581f8c19d7393122da7e25b2b24c"},
 ]
 pygasus = [
-    {file = "pygasus-0.8.1-py3-none-any.whl", hash = "sha256:534b587f0111d3c5415d5f84c13a751e97c3742513a90bb62186425b863393d1"},
-    {file = "pygasus-0.8.1.tar.gz", hash = "sha256:9212caf87929e332156b3e15b3128ef2f619806a103d12a31e749ab41f6f4d39"},
+    {file = "pygasus-0.8.2-py3-none-any.whl", hash = "sha256:5e430947ba7e5a7a23c7e5b07cbee965f844de1dae287555d3f9b3847b9ce157"},
+    {file = "pygasus-0.8.2.tar.gz", hash = "sha256:4a63cc368fd45dc8a687880f1eb10665437f3edf94bc142227a705b74b903085"},
 ]
 pyparsing = [
     {file = "pyparsing-2.4.7-py2.py3-none-any.whl", hash = "sha256:ef9d7589ef3c200abe66653d3f1ab1033c3c419ae9b9bdb1240a85b024efc88b"},

@@ -22,14 +22,15 @@ cryptography = "^35.0.0"
 itsdangerous = "^2.0.1"
 keyring = "^23.2.1"
 logbook = "^1.5.3"
-pygasus = "^0.7"
+pygasus = "^0.8"
 python = "3.9"
 
 [tool.poetry.dev-dependencies]
-pytest-cov = "^3.0.0"
 black = "^21.9b0"
 flake8 = "^4.0.1"
 pytest = "^6.2.5"
+pytest-asyncio = "^0.16.0"
+pytest-cov = "^3.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -267,17 +267,6 @@ class Service(BaseService):
         await self.handle_stop_game(origin.reader)
         self.process.should_stop.set()
 
-    async def handle_output(
-        self,
-        origin: Origin,
-        session_id: UUID,
-        output: bytes,
-    ):
-        """Send the output to the client."""
-        return
-        telnet = self.services["telnet"]
-        await telnet.write_to(session_id, output)
-
     async def handle_disconnect_session(
         self,
         origin: Origin,
@@ -304,12 +293,12 @@ class Service(BaseService):
             key=lambda s: s.creation,
         ):
             sessions[session.uuid] = (
-                session.ip_address, session.ago, session.secured
+                session.ip_address,
+                session.ago,
+                session.secured,
             )
 
-        await crux.answer(
-            origin, dict(sessions=sessions)
-        )
+        await crux.answer(origin, dict(sessions=sessions))
 
     async def handle_output(
         self,

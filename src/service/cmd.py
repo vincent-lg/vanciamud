@@ -42,15 +42,38 @@ CRUX protocol:
     the portal, when it starts.  This key is stored in the
     user keyring, so it can be retrieved by other processes
     running on the same machine, with the same username.
+    This first key will be used for signature.  Another one is generated
+    for encryption.
     The CRUX server then creates a simple TCP server.  HOST clients
-    can connect to it.  The communication between them is signed
-    (that is, at the end of each message, a signature should
-    be appended to make sure the message is legitimate).
+    can connect to it.  The communication between them can follow
+    different rules, detailed below.
+
+    1.  Unverified: in this mode, messages aren't signed nor
+        encryupted.  This mode should be avoided, even locally.
+        At worst, signing doesn't take a huge toll on performance
+        and is preferable, since messages could contain things
+        better left out of your system.
+    2.  Signed: in this mode, messages are signed, that is to say,
+        they travel in clear on the network with a hash at the end
+        indicated whether the message can be trusted or not.  Depending
+        on your needs, signing messages might be enough for most situations.
+    3.  Encrypted: in this mode, messages are encrypted to travel.
+        They may or may not be signed (you can combine both modes
+        at once).  The Fernet protocol is used for cryptography
+        and the secret key is generated and handled by the CRUX server
+        (the key doesn't travel on the network).
+
+    The mode to use isn't specific to a CRUX server and its HOST
+    clients, but can be different for every message.
 
     The message, as sent through the network, looks like this:
+        One byte indicating the mode(s) to use.  This is a flag
+        (1 => unverified, 2 => signed, 4 => encrypted, 6 => signed
+        and encrypted).
         A 8-byte packet, containing the length of the message.
-        The message as a pickled object.
-        The signature using the secret key.
+        The message as a pickled object.  If the mode is encrypted,
+        this message should be read by Fernet.  If the mode is signed,
+        the message should be checked by itsdangerous before being unpickled.
 
     A message, once unsigned, looks like a tuple containing
     the command name (as a string), the command ID (which is used
@@ -77,13 +100,13 @@ import time
 from typing import Any, Optional
 
 from async_timeout import timeout as async_timeout
-from itsdangerous import Serializer
 import keyring
 
 from service.origin import Origin
+from service.message import MessageMode
 
 # Constants
-INITIAL_PACKET_FORMAT_STRING = "!Q"
+INITIAL_PACKET_FORMAT_STRING = "!bQ"
 INITIAL_PACKET_SIZE = calcsize(INITIAL_PACKET_FORMAT_STRING)
 
 
@@ -112,7 +135,6 @@ class CmdMixin:
         self.commands = {}
         self.answers = {}
         self.cmd_id = count(0)
-        self.serializer = None
 
     async def init(self):
         """The service is initialized."""
@@ -135,7 +157,7 @@ class CmdMixin:
             self.logger.debug("The secret key couldn't be loaded.")
             return
 
-        self.serializer = Serializer(self.secret_key, serializer=pickle)
+        MessageMode.setup(self.secret_key, ...)
 
     async def read_commands(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -169,7 +191,7 @@ class CmdMixin:
                 await self.call_hook("error_read", reader)
                 return
 
-            # Extract the size, using `struct.unpack`.
+            # Extract the flag and size, using `struct.unpack`.
             try:
                 packet = unpack(INITIAL_PACKET_FORMAT_STRING, initial_packet)
             except struct_error:
@@ -177,9 +199,22 @@ class CmdMixin:
                 await queue.put(None)
                 return
 
+            # Read the message mode.
+            flag, size = packet
+
+            # Check that the flag is valid, build a MessageMode member.
+            try:
+                mode = MessageMode(flag)
+            except ValueError:
+                self.logger.error(
+                    f"a packet with an invalid flag of {flag} was received"
+                )
+                await queue.put(None)
+                await self.call_hook("error_read", reader)
+                return
+
             # Read exactly `size` bytes.  The read byte should contain
-            # a pickled collection.
-            size = packet[0]
+            # a pickled collection, more or less wrapped.
             try:
                 data = await reader.readexactly(size)
             except ConnectionError:
@@ -197,6 +232,7 @@ class CmdMixin:
                     "be unprocessed data."
                 )
                 await queue.put(None)
+                return
             except Exception:
                 self.logger.exception(
                     "An exception was raised on read_commands"
@@ -206,9 +242,9 @@ class CmdMixin:
 
             # Unsign/unpickle the data.
             try:
-                obj = self.serializer.loads(data)
+                obj = mode.get_content(data)
             except (pickle.PickleError, EOFError):
-                # The stream can't be read,t it's an obvious error at
+                # The stream can't be read, it's an obvious error at
                 # that point.
                 self.logger.exception(
                     "An error occurred while unpickling a CRUX command:"
@@ -216,7 +252,7 @@ class CmdMixin:
                 await self.call_hook("error_read", reader)
             else:
                 # An object has been unpickled.
-                # If it's a command, it should be a tuple (str, {arguments})
+                # If it's a command, it should be a tuple (str, int, {args})
                 # NOTE: this might benefit from match when match is available.
                 await self.parse_and_process_command(
                     reader, writer, queue, obj
@@ -329,6 +365,7 @@ class CmdMixin:
         cmd_name: str,
         args: Optional[dict[str, Any]] = None,
         cmd_id: Optional[int] = None,
+        mode: MessageMode = MessageMode.SIGNED,
     ):
         """Send a command to writer, as a tuple.
 
@@ -337,12 +374,15 @@ class CmdMixin:
             cmd_name (str): the command name.
             args (dict, opt): the arguments to pickle.
             cmd_id (int, optional): the command ID.
+            mode (MessageMode): the message mode to send this message.
 
         """
         cmd_id = next(self.cmd_id) if cmd_id is None else cmd_id
         args = args or {}
-        encoded = self.serializer.dumps((cmd_name, cmd_id, args))
-        initial_packet = pack(INITIAL_PACKET_FORMAT_STRING, len(encoded))
+        encoded = mode.compose(cmd_name, cmd_id, args)
+        initial_packet = pack(
+            INITIAL_PACKET_FORMAT_STRING, mode.value, len(encoded)
+        )
         stream = initial_packet + encoded
 
         try:

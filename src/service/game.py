@@ -29,9 +29,11 @@
 
 """Game service."""
 
+import asyncio
 from datetime import datetime
 from uuid import UUID
 
+from data.session import QUEUES
 from service.base import BaseService
 from service.origin import Origin
 
@@ -41,7 +43,7 @@ class Service(BaseService):
     """The game's main service."""
 
     name = "game"
-    sub_services = ("host",)
+    sub_services = ("host", "data")
 
     async def init(self):
         """Asynchronously initialize the service.
@@ -52,25 +54,49 @@ class Service(BaseService):
         often are created there for consistency.
 
         """
+        self.output_event = asyncio.Event()
         self.game_id = None
-        self.output_tasks = {}
-        self.cmds_task = None
+        self.spread_output_task = None
         self.sessions = {}
 
     async def setup(self):
         """Set the game up."""
-        self.services["host"].schedule_hook(
-            "connected", self.connected_to_CRUX
-        )
+        self.data = self.services["data"]
+        self.host = self.services["host"]
+        self.host.schedule_hook("connected", self.connected_to_CRUX)
+        await self.start_spread_output()
 
     async def cleanup(self):
         """Clean the service up before shutting down."""
-        for uuid, task in tuple(self.output_tasks.items()):
-            task.cancel()
-            self.output_tasks.pop(uuid, None)
+        if self.spread_output_task:
+            self.spread_output.cancel()
 
-        if self.cmds_task:
-            self.cmds_task.cancel()
+    async def start_spread_output(self):
+        """Start the task to spread output to all sessions."""
+        self.spread_output_task = asyncio.create_task(self.spread_output())
+
+    async def spread_output(self):
+        """Read output, send it to the session."""
+        await self.output_event.wait()
+
+        # Spread outputs contained in queues.
+        for session_id, queue in QUEUES.items():
+            # Dump the list of messages.
+            if queue.empty():
+                continue
+
+            messages = []
+            while not queue.empty():
+                messages.append(queue.get_nowait())
+            messages = b"\n".join(messages)
+            print(f"spread {messages} to {session_id}")
+
+            # Send these messages.
+            await self.host.send_cmd(
+                self.host.writer,
+                "output",
+                dict(session_id=session_id, output=messages, input_id=0),
+            )
 
     async def connected_to_CRUX(self, writer):
         """The host is connected to the CRUX server."""
@@ -148,8 +174,10 @@ class Service(BaseService):
         """
         host = self.services["host"]
         await host.answer(origin, dict(received=datetime.utcnow()))
+        session = self.data.get_session(session_id)
         command = command.decode("utf-8", errors="replace")
-        output = f"Received: {command}".encode("utf-8")
+        output = f"Old command: {session.db.cmd}"
+        session.db.cmd = command
         await host.send_cmd(
             host.writer,
             "output",
@@ -157,5 +185,34 @@ class Service(BaseService):
                 session_id=session_id,
                 output=output,
                 input_id=input_id,
-            )
+            ),
         )
+
+    async def handle_new_session(
+        self,
+        origin: Origin,
+        session_id: UUID,
+        creation: datetime,
+        ip_address: str,
+        secured: bool,
+        **kwargs,
+    ):
+        """Handle a new connection session.
+
+        The session is connected to Telnet (whether Telnet
+        or Telnet-SSL).  The portal then contacts the game process
+        to let it know a new session has been created.  The portal
+        doesn't store the session except in memory, but the game stores it
+        in its database.
+
+        Args:
+            session_id (UUID): the new session ID (should be unique).
+            creation (datetime): the datetime at which this session connected.
+            ip_address (str): the session's IP address.
+            secured (bool): is it a secured session (SSL)?
+
+        Answer:
+            None.
+
+        """
+        await self.data.new_session(session_id, creation, ip_address, secured)

@@ -270,18 +270,18 @@ class Service(CmdMixin, BaseService):
 
     async def error_read(self, session: "Session"):
         """An error occurred when reading from reader."""
-        self.sessions.pop(session.uuid, None)
         self.logger.info(
             f"telnet: the connection to a client {session.uuid} was closed."
         )
 
         writer = self.parent.game_writer
         if writer:
-            await self.CRUX.send_cmd(
+            await self.CRUX.wait_for_answer(
                 writer,
                 "disconnect_session",
                 dict(session_id=session.uuid),
             )
+        self.sessions.pop(session.uuid, None)
 
     async def new_session(
         self,
@@ -312,7 +312,14 @@ class Service(CmdMixin, BaseService):
         writer = self.parent.game_writer
         if writer:
             await self.CRUX.send_cmd(
-                writer, "new_session", dict(session_id=session_id, ssl=ssl)
+                writer,
+                "new_session",
+                dict(
+                    session_id=session_id,
+                    creation=session.creation,
+                    ip_address=session.ip_address,
+                    secured=ssl,
+                ),
             )
 
         return session
@@ -336,11 +343,13 @@ class Service(CmdMixin, BaseService):
         if writer:
             input_id = next(self.input_id)
             answer = await self.CRUX.wait_for_answer(
-                writer, "input", dict(
+                writer,
+                "input",
+                dict(
                     session_id=session.uuid,
                     command=command,
                     input_id=input_id,
-                )
+                ),
             )
 
             # Answer should contain the time it took to receive this.
@@ -395,9 +404,7 @@ class Service(CmdMixin, BaseService):
         """
         for i, (*_, stat_elapsed) in enumerate(self.stats):
             if stat_elapsed < elapsed:
-                self.stats.insert(
-                    i, (session_id, input_id, command, time_elapsed)
-                )
+                self.stats.insert(i, (session_id, input_id, command, elapsed))
                 break
 
         if len(self.stats) < 5:

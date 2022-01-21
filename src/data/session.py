@@ -30,15 +30,19 @@
 """Session storage model."""
 
 from datetime import datetime
+from queue import Queue
 from typing import Union
 from uuid import UUID
 
+from pydantic import PrivateAttr
 from pygasus import Field, Model
+from pygasus.model.decorators import lazy_property
 
+from context.base import CONTEXTS
 from data.namespace import NamespaceField
 
 # Mutable container.
-QUEUES = {}
+OUTPUT_QUEUE = Queue()
 
 
 class Session(Model):
@@ -51,6 +55,20 @@ class Session(Model):
     creation: datetime
     encoding: str
     db: dict = Field(custom_class=NamespaceField)
+    context_path: str
+    _cached_context = PrivateAttr()
+
+    @lazy_property
+    def context(self):
+        """Load the context from the context path."""
+        if (context := CONTEXTS.get(self.context_path)) is None:
+            raise ValueError(f"the context {self.context_path} doesn't exist")
+        return context(self)
+
+    @context.setter
+    def context(self, new_context):
+        """Change the session's context."""
+        self.context_path = new_context.pyname
 
     def msg(self, text: Union[str, bytes]) -> None:
         """Send text to this session.
@@ -70,5 +88,4 @@ class Session(Model):
             text = text.encode(self.encoding, errors="replace")
 
         if isinstance(text, bytes):
-            if queue := QUEUES.get(self.uuid):
-                queue.put(text)
+            OUTPUT_QUEUE.put((self.uuid, text))

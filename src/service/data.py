@@ -91,6 +91,7 @@ class Service(BaseService):
             ip_address=ip_address,
             secured=secured,
             encoding="ISO-8859-15",
+            context_path="connection.motd",
             db=Namespace(),
         )
         session.db.parent = session

@@ -33,7 +33,6 @@ import asyncio
 from datetime import datetime
 from uuid import UUID
 
-from data.session import QUEUES
 from service.base import BaseService
 from service.origin import Origin
 
@@ -43,7 +42,7 @@ class Service(BaseService):
     """The game's main service."""
 
     name = "game"
-    sub_services = ("host", "data")
+    sub_services = ("host", "data", "mudio")
 
     async def init(self):
         """Asynchronously initialize the service.
@@ -56,47 +55,16 @@ class Service(BaseService):
         """
         self.output_event = asyncio.Event()
         self.game_id = None
-        self.spread_output_task = None
-        self.sessions = {}
 
     async def setup(self):
         """Set the game up."""
         self.data = self.services["data"]
         self.host = self.services["host"]
+        self.mudio = self.services["mudio"]
         self.host.schedule_hook("connected", self.connected_to_CRUX)
-        await self.start_spread_output()
 
     async def cleanup(self):
         """Clean the service up before shutting down."""
-        if self.spread_output_task:
-            self.spread_output.cancel()
-
-    async def start_spread_output(self):
-        """Start the task to spread output to all sessions."""
-        self.spread_output_task = asyncio.create_task(self.spread_output())
-
-    async def spread_output(self):
-        """Read output, send it to the session."""
-        await self.output_event.wait()
-
-        # Spread outputs contained in queues.
-        for session_id, queue in QUEUES.items():
-            # Dump the list of messages.
-            if queue.empty():
-                continue
-
-            messages = []
-            while not queue.empty():
-                messages.append(queue.get_nowait())
-            messages = b"\n".join(messages)
-            print(f"spread {messages} to {session_id}")
-
-            # Send these messages.
-            await self.host.send_cmd(
-                self.host.writer,
-                "output",
-                dict(session_id=session_id, output=messages, input_id=0),
-            )
 
     async def connected_to_CRUX(self, writer):
         """The host is connected to the CRUX server."""
@@ -176,17 +144,8 @@ class Service(BaseService):
         await host.answer(origin, dict(received=datetime.utcnow()))
         session = self.data.get_session(session_id)
         command = command.decode("utf-8", errors="replace")
-        output = f"Old command: {session.db.cmd}"
-        session.db.cmd = command
-        await host.send_cmd(
-            host.writer,
-            "output",
-            dict(
-                session_id=session_id,
-                output=output,
-                input_id=input_id,
-            ),
-        )
+        self.mudio.handle_input(session, command)
+        await self.mudio.send_output(input_id)
 
     async def handle_new_session(
         self,
@@ -215,4 +174,9 @@ class Service(BaseService):
             None.
 
         """
-        await self.data.new_session(session_id, creation, ip_address, secured)
+        self.logger.debug(f"Connection of a new session: {session_id}")
+        session = await self.data.new_session(
+            session_id, creation, ip_address, secured
+        )
+        session.context.refresh()
+        await self.mudio.send_output(0)

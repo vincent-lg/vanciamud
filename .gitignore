@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# TalisMUD files
+.ssl
+talismud.db

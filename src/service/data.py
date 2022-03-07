@@ -30,6 +30,7 @@
 """Data service."""
 
 from datetime import datetime
+import pickle
 from typing import Optional
 from uuid import UUID
 
@@ -92,6 +93,7 @@ class Service(BaseService):
             secured=secured,
             encoding="ISO-8859-15",
             context_path="connection.motd",
+            context_options=pickle.dumps({}),
             db=Namespace(),
         )
         session.db.parent = session

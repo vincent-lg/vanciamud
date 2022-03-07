@@ -30,6 +30,7 @@
 """Session storage model."""
 
 from datetime import datetime
+import pickle
 from queue import Queue
 from typing import Union
 from uuid import UUID
@@ -56,6 +57,7 @@ class Session(Model):
     encoding: str
     db: dict = Field(custom_class=NamespaceField)
     context_path: str
+    context_options: bytes
     _cached_context = PrivateAttr()
 
     @lazy_property
@@ -69,6 +71,7 @@ class Session(Model):
     def context(self, new_context):
         """Change the session's context."""
         self.context_path = new_context.pyname
+        self.context_options = pickle.dumps(new_context.options)
 
     def msg(self, text: Union[str, bytes]) -> None:
         """Send text to this session.

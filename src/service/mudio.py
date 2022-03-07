@@ -34,7 +34,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import Optional
 
-from context.base import BaseContext, CONTEXTS
+from context.base import Context, CONTEXTS
 from context.log import logger
 from data.session import Session, OUTPUT_QUEUE
 from service.base import BaseService
@@ -82,12 +82,9 @@ class Service(BaseService):
 
         exclude = (
             parent / "context" / "base.py",
-            parent / "context" / "character_context.py",
             parent / "context" / "log.py",
-            parent / "context" / "session_context.py",
-            parent / "context" / "stack.py",
         )
-        forbidden = (BaseContext,)
+        forbidden = (Context,)
 
         # Search the context files.
         logger.debug("Preparing to load all contexts...")
@@ -126,7 +123,7 @@ class Service(BaseService):
                     if (
                         isinstance(value, type)
                         and value not in forbidden
-                        and issubclass(value, BaseContext)
+                        and issubclass(value, Context)
                     ):
                         if value.__module__ != pypath:
                             continue

@@ -39,12 +39,12 @@ or the password).
 
 In short, a context represents the "step" of a connected session.
 It handles user input (text entered by the user connected to this session).
-When "logged in" to the game, a session is still connected to a context,
-the one who can interpret commands.
+When "logged in" to the game, a character can be connected to
+one or more contexts.  By default, a logged-in user is connected to
+a single context: the one that interprets commands.
 
 """
 
-from abc import ABCMeta, abstractmethod
 import inspect
 from textwrap import dedent
 import traceback
@@ -53,7 +53,7 @@ from typing import Optional, Union
 CONTEXTS = {}
 
 
-class BaseContext(metaclass=ABCMeta):
+class Context:
 
     """Class defining a context.
 
@@ -139,6 +139,11 @@ class BaseContext(metaclass=ABCMeta):
     pyname = None
     prompt = ""
     text = ""
+
+    def __init__(self, session):
+        self.session = session
+        self.character = None
+        self.options = {}
 
     def __str__(self):
         return self.pyname
@@ -259,7 +264,15 @@ class BaseContext(metaclass=ABCMeta):
 
         return res
 
-    @abstractmethod
+    def msg(self, text: Union[str, bytes]):
+        """Send some text to the context session.
+
+        Args:
+            text (str or bytes): text to send.
+
+        """
+        self.session.msg(text)
+
     def move(self, context_path: str):
         """Move to a new context.
 
@@ -272,19 +285,22 @@ class BaseContext(metaclass=ABCMeta):
             context_path (str): path to the module where the new context is.
 
         Note:
-            Character contexts cannot be moved with this method.  Use
-            the context stack on the character
-            (`character.context_stack.add(...)` instead).
+            Character contexts cannot be moved with this method.
+            Explicitly use the sub-context methods `add` or `replace`.
 
         """
-        pass
+        if self.character:
+            raise ValueError(
+                "this is a character context, the current character "
+                "cannot move outside of it.  Use `add` or `replace` "
+                "to add a new context on the stack, or `quit` to remove "
+                "the current context from the stack, which cannot "
+                "be used when there is only one active context "
+                "on the context stack."
+            )
 
-    @abstractmethod
-    def msg(self, text: Union[str, bytes]):
-        """Send some text to the context.
-
-        Args:
-            text (str or bytes): text to send.
-
-        """
-        pass
+        NewContext = CONTEXTS[context_path]
+        new_context = NewContext(self.session)
+        self.leave()
+        self.session.context = new_context
+        new_context.enter()

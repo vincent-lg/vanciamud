@@ -29,10 +29,10 @@
 
 """Home, the first active node in the login/chargen process."""
 
-from context.session_context import SessionContext
+from context.base import Context
 
 
-class Home(SessionContext):
+class Home(Context):
 
     """Context displayed just after MOTD.
 

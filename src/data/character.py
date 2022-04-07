@@ -27,52 +27,28 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Session storage model."""
+"""Character storage model."""
 
-from datetime import datetime
 import pickle
-from queue import Queue
 from typing import Optional, Union
-from uuid import UUID
 
 from pydantic import PrivateAttr
 from pygasus import Field, Model
 from pygasus.model.decorators import lazy_property
 
-from context.base import CONTEXTS
+from data.contexts import ContextsField
 from data.namespace import NamespaceField
 
-# Mutable container.
-OUTPUT_QUEUE = Queue()
 
+class Character(Model):
 
-class Session(Model):
+    """Character storage model."""
 
-    """Session storage model."""
-
-    uuid: UUID = Field(primary_key=True)
-    ip_address: str
-    secured: bool
-    creation: datetime
-    encoding: str
+    id: int = Field(primary_key=True)
+    contexts: list = Field([], custom_class=ContextsField)
     db: dict = Field({}, custom_class=NamespaceField)
-    context_path: str
-    context_options: bytes
-    character: Optional["Character"] = None
-    _cached_context = PrivateAttr()
-
-    @lazy_property
-    def context(self):
-        """Load the context from the context path."""
-        if (context := CONTEXTS.get(self.context_path)) is None:
-            raise ValueError(f"the context {self.context_path} doesn't exist")
-        return context(self)
-
-    @context.setter
-    def context(self, new_context):
-        """Change the session's context."""
-        self.context_path = new_context.pyname
-        self.context_options = pickle.dumps(new_context.options)
+    account: Optional["Account"] = Field(None, owner=True)
+    session: Optional["Session"] = Field(None, owner=True)
 
     def msg(self, text: Union[str, bytes]) -> None:
         """Send text to this session.
@@ -88,8 +64,5 @@ class Session(Model):
         If the text is not yet encoded, use the session's encoding.
 
         """
-        if isinstance(text, str):
-            text = text.encode(self.encoding, errors="replace")
-
-        if isinstance(text, bytes):
-            OUTPUT_QUEUE.put((self.uuid, text))
+        if self.session:
+            self.session.msg(text)

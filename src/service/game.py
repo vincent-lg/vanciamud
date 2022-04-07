@@ -178,5 +178,5 @@ class Service(BaseService):
         session = await self.data.new_session(
             session_id, creation, ip_address, secured
         )
-        session.context.refresh()
+        session.context.enter()
         await self.mudio.send_output(0)

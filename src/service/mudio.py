@@ -29,6 +29,7 @@
 
 """MudIO service, set to handle input/output on the game level"""
 
+import asyncio
 from collections import defaultdict
 from importlib import import_module
 from pathlib import Path
@@ -62,6 +63,7 @@ class Service(BaseService):
         often are created there for consistency.
 
         """
+        self.output_lock = asyncio.Lock()
         self.contexts = {}
 
     async def setup(self):
@@ -165,37 +167,41 @@ class Service(BaseService):
             command (str): the sent command as a string.
 
         """
+        data = self.parent.data
         context = session.context
         context.handle_input(command)
 
     async def send_output(self, input_id: Optional[int] = None):
         """Send output synchronously."""
         host = self.parent.host
+        data = self.parent.data
         to_send = defaultdict(list)
-        while not OUTPUT_QUEUE.empty():
-            ssid, msg = OUTPUT_QUEUE.get_nowait()
-            to_send[ssid].append(msg)
 
-        # At this point, messages have been sorted by session.  Browse them.
-        for ssid, messages in to_send.items():
-            session = self.parent.data.get_session(ssid)
-            msg = b"\n".join(messages)
+        async with self.output_lock:
+            while not OUTPUT_QUEUE.empty():
+                ssid, msg = OUTPUT_QUEUE.get_nowait()
+                to_send[ssid].append(msg)
 
-            # Display the context prompt.
-            prompt = session.context.get_prompt()
-            if isinstance(prompt, str):
-                prompt = prompt.encode("utf-8")
+            # At this point, messages have been sorted by session.
+            for ssid, messages in to_send.items():
+                session = data.get_session(ssid)
+                msg = b"\n".join(messages)
 
-            if prompt:
-                msg = msg + b"\n\n" + prompt
+                # Display the context prompt.
+                prompt = session.context.get_prompt()
+                if isinstance(prompt, str):
+                    prompt = prompt.encode("utf-8")
 
-            # Send the output to the session.
-            await host.send_cmd(
-                host.writer,
-                "output",
-                dict(
-                    session_id=session.uuid,
-                    output=msg,
-                    input_id=input_id,
-                ),
-            )
+                if prompt:
+                    msg = msg + b"\n\n" + prompt
+
+                # Send the output to the session.
+                await host.send_cmd(
+                    host.writer,
+                    "output",
+                    dict(
+                        session_id=session.uuid,
+                        output=msg,
+                        input_id=input_id,
+                    ),
+                )

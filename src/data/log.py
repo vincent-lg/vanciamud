@@ -27,31 +27,17 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Home, the first active node in the login/chargen process."""
 
-from context.base import Context
+"""Log configuration for the database."""
 
+from logbook import FileHandler, Logger
 
-class Home(Context):
-
-    """Context displayed just after MOTD.
-
-    Input:
-        new: the user wishes to create a new account.
-        <existing account>: the user has an account and wishes to connect.
-
-    """
-
-    prompt = "Your username:"
-    text = """
-        If you already have an account, enter its username.
-        Otherwise, type 'new' to create a new account.
-    """
-
-    def input_new(self):
-        """The user has input 'new' to create a new account."""
-        self.move("account.new.username")
-
-    def other_input(self, username: str):
-        """The user entered something else."""
-        self.msg(f"You entered: {username}")
+logger = Logger()
+file_handler = FileHandler(
+    "logs/database.log", encoding="utf-8", level="DEBUG", delay=True
+)
+file_handler.format_string = (
+    "{record.time:%Y-%m-%d %H:%M:%S.%f%z} [{record.level_name}] "
+    "{record.message}"
+)
+logger.handlers.append(file_handler)

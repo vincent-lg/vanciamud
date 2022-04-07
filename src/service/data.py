@@ -36,6 +36,9 @@ from uuid import UUID
 
 from pygasus.storage import SQLStorageEngine
 
+from data.account import Account
+from data.character import Character
+from data.contexts import ContextsField
 from data.namespace import Namespace, NamespaceField
 from data.session import Session
 from service.base import BaseService
@@ -58,7 +61,8 @@ class Service(BaseService):
         """
         self.engine = SQLStorageEngine()
         self.engine.init("talismud.db", logging=True)
-        self.engine.bind({Session})
+        self.engine.bind({Account, Character, Session})
+        self.engine.add_custom_field(ContextsField)
         self.engine.add_custom_field(NamespaceField)
 
     async def setup(self):
@@ -96,9 +100,6 @@ class Service(BaseService):
             context_options=pickle.dumps({}),
             db=Namespace(),
         )
-        session.db.parent = session
-        session.db.field = "db"
-        session.db.cmd = "not set"
         return session
 
     def get_session(self, session_id: UUID) -> Optional[Session]:

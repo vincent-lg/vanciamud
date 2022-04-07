@@ -27,31 +27,34 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Home, the first active node in the login/chargen process."""
+"""The account DB Model.
 
-from context.base import Context
+An account is a storage for player characters.  Each account is protected
+by a username and a password.  General options and contact information
+also are stored in the account as a rule.
+
+An account is a player feature, NPCs don't use them at all.
+
+"""
+
+from datetime import datetime
+from typing import List, Optional
+
+from pydantic import EmailStr
+from pygasus import Field, Model
+
+from data.namespace import NamespaceField
 
 
-class Home(Context):
+class Account(Model):
 
-    """Context displayed just after MOTD.
+    """Model to represent an account."""
 
-    Input:
-        new: the user wishes to create a new account.
-        <existing account>: the user has an account and wishes to connect.
-
-    """
-
-    prompt = "Your username:"
-    text = """
-        If you already have an account, enter its username.
-        Otherwise, type 'new' to create a new account.
-    """
-
-    def input_new(self):
-        """The user has input 'new' to create a new account."""
-        self.move("account.new.username")
-
-    def other_input(self, username: str):
-        """The user entered something else."""
-        self.msg(f"You entered: {username}")
+    id: int = Field(primary_key=True)
+    username: str = Field(index=True, unique=True)
+    hashed_password: bytes
+    email: Optional[EmailStr] = Field(None, index=True, unique=True)
+    db: dict = Field({}, custom_class=NamespaceField)
+    created_on: datetime = Field(default_factory=datetime.utcnow)
+    updated_on: datetime = Field(default_factory=datetime.utcnow)
+    characters: List["Character"] = []

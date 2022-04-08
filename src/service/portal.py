@@ -317,3 +317,11 @@ class Service(BaseService):
         """
         telnet = self.services["telnet"]
         await telnet.write_to(session_id, output)
+
+    async def handle_shell(self, origin: Origin, code: str):
+        """Send the code to be processed by the game."""
+        crux = self.services["crux"]
+        result = await crux.wait_for_answer(
+            self.game_writer, "shell", dict(code=code), timeout=None
+        )
+        await crux.answer(origin, result)

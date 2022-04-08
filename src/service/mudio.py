@@ -167,7 +167,6 @@ class Service(BaseService):
             command (str): the sent command as a string.
 
         """
-        data = self.parent.data
         context = session.context
         context.handle_input(command)
 

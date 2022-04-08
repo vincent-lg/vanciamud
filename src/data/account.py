@@ -38,12 +38,15 @@ An account is a player feature, NPCs don't use them at all.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from pydantic import EmailStr
 from pygasus import Field, Model
 
 from data.namespace import NamespaceField
+
+if TYPE_CHECKING:
+    from data.character import Character
 
 
 class Account(Model):

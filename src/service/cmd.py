@@ -393,6 +393,7 @@ class CmdMixin:
         except Exception:
             await self.call_hook("error_write", writer)
             self.logger.exception("An error occurred on sending a command:")
+            raise
 
     async def wait_for_cmd(
         self,

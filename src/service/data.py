@@ -39,9 +39,11 @@ from pygasus.storage import SQLStorageEngine
 from data.account import Account
 from data.character import Character
 from data.contexts import ContextsField
+from data.log import logger
 from data.namespace import Namespace, NamespaceField
 from data.session import Session
 from service.base import BaseService
+from service.shell import Shell
 
 
 class Service(BaseService):
@@ -60,7 +62,7 @@ class Service(BaseService):
 
         """
         self.engine = SQLStorageEngine()
-        self.engine.init("talismud.db", logging=True)
+        self.engine.init("talismud.db", logging=self.log_query)
         self.engine.bind({Account, Character, Session})
         self.engine.add_custom_field(ContextsField)
         self.engine.add_custom_field(NamespaceField)
@@ -71,6 +73,16 @@ class Service(BaseService):
     async def cleanup(self):
         """Clean the service up before shutting down."""
         self.engine.close()
+
+    def setup_shell(self, shell: Shell):
+        """Setup the shell,a dding variables."""
+        shell.locals.update(
+            {
+                "Account": Account,
+                "Character": Character,
+                "Session": Session,
+            },
+        )
 
     async def new_session(
         self,
@@ -105,3 +117,22 @@ class Service(BaseService):
     def get_session(self, session_id: UUID) -> Optional[Session]:
         """Return, if found, the stored session with this UUID."""
         return Session.repository.get(uuid=session_id)
+
+    def delete_session(self, session_id: UUID) -> Optional[Session]:
+        """Delete, if found, the stored session with this UUID."""
+        if session := self.get_session(session_id):
+            logger.debug(f"The session {session_id} is to be deleted.")
+            Session.repository.delete(session)
+            return True
+
+        return False
+
+    def log_query(self, statement: str, args: tuple[str]):
+        """Log the specified query."""
+        statement = statement.replace("\t", " " * 4)
+        statement = ("\n" + " " * 4).join(
+            [line for line in statement.splitlines()]
+        )
+        if args:
+            statement += f"\n{' ' * 4}{args}"
+        logger.debug(f"\n{' ' * 4}{statement}")

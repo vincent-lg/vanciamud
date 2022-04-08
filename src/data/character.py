@@ -29,15 +29,16 @@
 
 """Character storage model."""
 
-import pickle
-from typing import Optional, Union
+from typing import Optional, Union, TYPE_CHECKING
 
-from pydantic import PrivateAttr
 from pygasus import Field, Model
-from pygasus.model.decorators import lazy_property
 
 from data.contexts import ContextsField
 from data.namespace import NamespaceField
+
+if TYPE_CHECKING:
+    from data.account import Account
+    from data.session import Session
 
 
 class Character(Model):

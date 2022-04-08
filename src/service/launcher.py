@@ -416,3 +416,41 @@ class Service(BaseService):
             secured = "Yes" if secured else "No"
             table.rows.append((session_id.hex, ip, creation, secured))
         print(table)
+
+    async def action_shell(self, args: argparse.ArgumentParser):
+        """Open a Python-like shell and send command to the portal.
+
+        These commands are then sent to the game where they
+        are interpreted.
+
+        """
+        host = self.services["host"]
+        await self.check_status()
+        init_started = self.status == MUDStatus.ALL_ONLINE
+        if not init_started:
+            await self.action_start(args)
+
+        print("I'm started")
+        # In a loop, ask user input and send the Python command
+        # to the portal, which will forward it to the game, which
+        # will evaluate and answer in the same way.
+        prompt = ">>> "
+        while True:
+            try:
+                code = input(prompt)
+            except KeyboardInterrupt:
+                print()
+                break
+
+            result = await host.wait_for_answer(
+                host.writer, "shell", dict(code=code), timeout=None
+            )
+            if result:
+                prompt = result.get("prompt", "??? ")
+                display = result.get("display", "")
+                if display:
+                    print(display.rstrip("\n"))
+
+        # If the game wasn't started before executing code, stop it.
+        if not init_started:
+            await self.action_stop(args)

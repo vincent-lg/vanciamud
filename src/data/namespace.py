@@ -38,27 +38,27 @@ class Namespace(dict):
 
     """A namespace, holding attribute-like flexible data."""
 
-    def __init__(self, data=None):
+    def __init__(self, *args, **kwargs):
         self.parent = None
         self.field = None
-        self._data = data or {}
+        super().__init__(*args, **kwargs)
 
     def __getattr__(self, key):
         if key in ("parent", "field", "_data"):
             return object.__getattr__(self, key)
-        return self._data[key]
+        return self[key]
 
     def __setattr__(self, key, value):
         if key in ("parent", "field", "_data"):
             object.__setattr__(self, key, value)
         else:
-            self._data[key] = value
+            self[key] = value
             self.save()
 
     def save(self):
         """Save the dictionary into the parent."""
         type(self.parent).repository.update(
-            self.parent, self.field, {}, self._data
+            self.parent, self.field, {}, self.copy()
         )
 
 
@@ -88,8 +88,6 @@ class NamespaceField(CustomField):
             It must be of the same type as returned by `add`.
 
         """
-        if isinstance(value, Namespace):
-            value = value._data
         return pickle.dumps(dict(value))
 
     def to_field(self, value: bytes):
@@ -104,7 +102,4 @@ class NamespaceField(CustomField):
             in the model.
 
         """
-        data = pickle.loads(value)
-        if isinstance(data, Namespace):
-            data = data._data
-        return Namespace(data=data)
+        return Namespace(pickle.loads(value))

@@ -59,6 +59,10 @@ sub_status = subparsers.add_parser(
     "status", help="retrieve the status of the portal and game processes"
 )
 sub_status.set_defaults(action="status")
+sub_shell = subparsers.add_parser(
+    "shell", help="show a Python shell inside TalisMUD"
+)
+sub_shell.set_defaults(action="shell")
 sub_sessions = subparsers.add_parser(
     "sessions", help="show the list of connected Telnet sessions"
 )

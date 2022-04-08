@@ -32,7 +32,7 @@
 from datetime import datetime
 import pickle
 from queue import Queue
-from typing import Optional, Union
+from typing import Optional, Union, TYPE_CHECKING
 from uuid import UUID
 
 from pydantic import PrivateAttr
@@ -41,6 +41,9 @@ from pygasus.model.decorators import lazy_property
 
 from context.base import CONTEXTS
 from data.namespace import NamespaceField
+
+if TYPE_CHECKING:
+    from data.character import Character
 
 # Mutable container.
 OUTPUT_QUEUE = Queue()

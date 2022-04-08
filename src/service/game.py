@@ -35,6 +35,7 @@ from uuid import UUID
 
 from service.base import BaseService
 from service.origin import Origin
+from service.shell import Shell
 
 
 class Service(BaseService):
@@ -55,6 +56,7 @@ class Service(BaseService):
         """
         self.output_event = asyncio.Event()
         self.game_id = None
+        self.console = Shell({})
 
     async def setup(self):
         """Set the game up."""
@@ -62,6 +64,7 @@ class Service(BaseService):
         self.host = self.services["host"]
         self.mudio = self.services["mudio"]
         self.host.schedule_hook("connected", self.connected_to_CRUX)
+        self.data.setup_shell(self.console)
 
     async def cleanup(self):
         """Clean the service up before shutting down."""
@@ -180,3 +183,40 @@ class Service(BaseService):
         )
         session.context.enter()
         await self.mudio.send_output(0)
+
+    async def handle_disconnect_session(
+        self,
+        origin: Origin,
+        session_id: UUID,
+        **kwargs,
+    ):
+        """Handle a disconnected session.
+
+        Args:
+            session_id (UUID): the disconnected session ID.
+
+        Answer:
+            None.
+
+        """
+        self.logger.debug(f"Deletion of a session: {session_id}")
+        deletion = self.data.delete_session(session_id)
+        await self.host.answer(origin, dict(deletion=deletion))
+
+    async def handle_shell(self, origin: Origin, code: str):
+        """Execute arbitrary Python code.
+
+        Args:
+            code (str): the Python code to execute.
+
+        Response:
+            The 'result' command with the output.
+
+        """
+        host = self.services["host"]
+        more = self.console.push(code)
+        prompt = "... " if more else ">>> "
+
+        if host.writer:
+            display = self.console.output
+            await host.answer(origin, dict(display=display, prompt=prompt))

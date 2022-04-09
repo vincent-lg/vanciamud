@@ -1,0 +1,137 @@
+# Default and visible setting file.
+# If you want to modify it, go ahead, but keep in mind that this file
+# is visible.  DO NOT WRITE passwords here.
+
+[default]
+
+# 1. General configuration
+
+# The name of your game:
+name = "TalisMUD"
+
+# The game version, can be shown in the Message-Of-The-Day screen if you wish.
+version = "0.0.1"
+
+# The game longer description if you want one, as a multiline string.
+game_description = """
+This is a cool game, since it's my very own.
+
+But yes, it's based on TalisMUD.  Still, it's my very own.
+"""
+
+# 2. Security settings
+
+# Note: password settings that are changed AFTER the first accounts
+#       have been created will render these accounts impossible to
+#       connect to because their password can't be accessed anymore.  If
+#       you change these settings, do it before your create your first
+#       accounts, or change them and erase your database altogether
+#       to start from fresh.
+#       BUT YOU DO NOT HAVE to change these settings as they provide
+#       a high degree of security already.
+
+# Algorithm name to use to hash passwords.
+# Recommended choices are sha256 and sha512, but you can use something else.
+hash_algorithm = "sha256"
+
+# Salt size
+# The salt will be randomly-generated for each password.  It is
+# recommended your salt to be at least 16 bytes in length, but it
+# can be longer.
+salt_size = 32
+
+# Number of iterations
+# To store your password, the algorithm will build a stronger hash
+# if you specify a greater number of iterations.  The greater the number,
+# the slower it will perform however.  It is recommended to use at least
+# 100,000 iterations for a SHA-256 password, so that's the default setting.
+hash_iterations = 100_000
+
+# Key size
+# You don't have to specify a key size as PBKDF2 will choose a size
+# for you.  But you can override its decision.  Set to `None` to
+# let PBKDF2 decide.
+key_size = 0
+
+# The following settings can be changed afterward.
+# Two-letter country code to use for the SSL certificates (US, FR, ES...).
+country = "FR"
+
+# State/province name for the SSL certificates.
+state = "None"
+
+# Locality name for the SSL certificates.
+locality = "Paris"
+
+# Organization name for the SSL certificates.
+organization = "TalisMUD"
+
+# 3. Network interfaces and ports
+
+# Allow external connections (from the Internet). Note that even if this
+# setting is set to true, accessing your game from the Internet will
+# be affected by a lot of factors.
+# If false, only connections from the local host will be accepted.
+public_access = true
+
+# The port users have to connect to if they use a Telnet-like MUD client.
+telnet_port = 4000
+
+# The port users have to connect to in order to access your game website.
+# Note: changing this setting to 80 or 443 is a bad idea.  Use proxies
+# instead.  See the deployment guide.
+web_port = 4001
+
+# The port users have to connect to in order to access the telnet-SSL game.
+# A connection to telnet-SSL is identical to telnet, except the connection
+# is secured (passwords, in particular, do not travel in plain text on the
+# network).  You can set this to None if you don't wish to have a
+# telnet-SSL port, but you probably don't have a good reason for doing
+# so.  Not all MUD clients support SSL, unfortunately.
+telnet_ssl_port = 4003
+
+# 4. Account creation rules
+
+# Minimum length of an account username
+# (The shorter the username, the easier to steal the account)
+# (Obviously, 1 is the very minimum):
+min_account_username = 4
+
+# Forbidden usernames
+# These names aren't allowed.  That's an array (a list) of names.
+# You can add or remove to it.  Case isn't a factor (if you forbid "test",
+# then "Test" or "TEST" will be rejected as username).
+forbidden_usernames = [
+    "guest",
+    "talismud",
+    "temp",
+    "test",
+]
+
+# Minimum length of account password (in characters)
+min_account_password = 6
+
+# Starting room for new characters, enter the room barcode (str)
+start_room = "begin"
+
+# Room if the character location has been destroyed while she was away
+return_room = "begin"
+
+# 5. Display settings
+
+# (Individual clients/players can change that setting for their connection.)
+default_encoding = "utf-8"
+
+# 6. Content creation settings
+
+# These settings affect how your builders can work to contribute content
+# to TalisMUD.
+
+# Blueprint parser
+blueprint_parser = "yaml"
+
+# Blueprint directory to store blueprint files
+blueprint_directory = "blueprints"
+
+# Blueprint backup mode
+blueprint_backup = true

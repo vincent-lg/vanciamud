@@ -19,6 +19,7 @@ include = [
 async-timeout = "^4.0.1"
 beautifultable = "^1.0.1"
 cryptography = "^35.0.0"
+dynaconf = "^3.1.7"
 itsdangerous = "^2.0.1"
 keyring = "^23.2.1"
 logbook = "^1.5.3"

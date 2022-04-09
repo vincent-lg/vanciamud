@@ -189,7 +189,7 @@ class Service(BaseService):
                 # Display the context prompt.
                 prompt = session.context.get_prompt()
                 if isinstance(prompt, str):
-                    prompt = prompt.encode("utf-8")
+                    prompt = prompt.encode(session.encoding, errors="replace")
 
                 if prompt:
                     msg = msg + b"\n\n" + prompt

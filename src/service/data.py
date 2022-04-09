@@ -34,6 +34,7 @@ import pickle
 from typing import Optional
 from uuid import UUID
 
+from dynaconf import settings
 from pygasus.storage import SQLStorageEngine
 
 from data.account import Account
@@ -107,7 +108,7 @@ class Service(BaseService):
             creation=creation,
             ip_address=ip_address,
             secured=secured,
-            encoding="ISO-8859-15",
+            encoding=settings.DEFAULT_ENCODING,
             context_path="connection.motd",
             context_options=pickle.dumps({}),
             db=Namespace(),

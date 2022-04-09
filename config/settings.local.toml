@@ -1,0 +1,8 @@
+# Local-only settings
+
+[default]
+
+# 5. Display settings
+
+# (Individual clients/players can change that setting for their connection.)
+default_encoding = "ISO-8859-15"

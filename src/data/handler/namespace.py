@@ -44,14 +44,14 @@ class Namespace(dict):
         super().__init__(*args, **kwargs)
 
     def __getattr__(self, key):
-        if key in ("parent", "field", "_data"):
+        if key in ("parent", "field"):
             return object.__getattr__(self, key)
 
         value = self[key]
         return value
 
     def __setattr__(self, key, value):
-        if key in ("parent", "field", "_data"):
+        if key in ("parent", "field"):
             object.__setattr__(self, key, value)
         else:
             self[key] = value

@@ -39,6 +39,7 @@ from pygasus.storage import SQLStorageEngine
 
 from data.account import Account
 from data.character import Character
+from data.delay import Delay
 from data.handler.contexts import ContextsField
 from data.handler.namespace import Namespace, NamespaceField
 from data.handler.permissions import PermissionsField
@@ -65,7 +66,7 @@ class Service(BaseService):
         """
         self.engine = SQLStorageEngine()
         self.engine.init("talismud.db", logging=self.log_query)
-        self.engine.bind({Account, Character, Session})
+        self.engine.bind({Account, Character, Delay, Session})
         self.engine.add_custom_field(ContextsField)
         self.engine.add_custom_field(NamespaceField)
         self.engine.add_custom_field(PermissionsField)

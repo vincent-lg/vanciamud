@@ -31,13 +31,15 @@
 
 import asyncio
 from datetime import datetime
+import pickle
 from queue import Queue
 from uuid import UUID
 
+from data.delay import Delay as DbDelay
 from service.base import BaseService
 from service.origin import Origin
 from service.shell import Shell
-
+from tools.delay import Delay
 
 # Portal commands.
 PORTAL_COMMANDS = Queue()
@@ -74,6 +76,28 @@ class Service(BaseService):
     async def cleanup(self):
         """Clean the service up before shutting down."""
 
+    def restore_delays(self):
+        """Schedule all persistent delays."""
+        now = datetime.utcnow()
+        Delay._game_service = self
+        for persistent in DbDelay.repository.select(DbDelay.id > 0):
+            delta = persistent.expire_at - now
+            seconds = delta.total_seconds()
+            if seconds < 0:
+                seconds = 0
+
+            callback, args, kwargs = pickle.loads(persistent.pickled)
+            obj = Delay.schedule(seconds, callback, *args, **kwargs)
+            obj.persistent = persistent
+
+    def call_delay(self, delay: Delay):
+        """Call ths delay."""
+        delay._execute()
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.mudio.send_output(0))
+        loop.create_task(self.mudio.send_portal_commands())
+        self.logger.debug("Scheduled")
+
     async def connected_to_CRUX(self, writer):
         """The host is connected to the CRUX server."""
         host = self.services["host"]
@@ -88,6 +112,7 @@ class Service(BaseService):
             "A read error happened on the connection to CRUX, "
             "stop the process."
         )
+        Delay.persist()
         self.process.should_stop.set()
 
     async def error_write(self):
@@ -96,6 +121,7 @@ class Service(BaseService):
             "A write error happened on the connection to CRUX, "
             "stop the process."
         )
+        Delay.persist()
         self.process.should_stop.set()
 
     async def send_portal_commands(self):
@@ -116,12 +142,14 @@ class Service(BaseService):
         """A new game process wants to be registered."""
         self.logger.info(f"The game is now registered under ID {game_id}")
         self.game_id = game_id
+        self.restore_delays()
 
     async def handle_stop_game(self, origin: Origin, game_id: str):
         """Stop this game process."""
         self.logger.info(f"The game of ID {game_id} is asked to stop.")
         if self.game_id == game_id:
             self.logger.debug("Shutting down the game...")
+            Delay.persist()
             self.process.should_stop.set()
 
     async def handle_input(

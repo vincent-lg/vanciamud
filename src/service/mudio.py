@@ -178,6 +178,7 @@ class Service(BaseService):
             parent / "command" / "args",
             parent / "command" / "base.py",
             parent / "command" / "log.py",
+            parent / "command" / "namespace.py",
         )
         forbidden = (Command,)
 

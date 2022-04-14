@@ -33,6 +33,8 @@ import pickle
 
 from pygasus.model import CustomField
 
+_NOT_SET = object()
+
 
 class Namespace(dict):
 
@@ -47,15 +49,60 @@ class Namespace(dict):
         if key in ("parent", "field"):
             return object.__getattr__(self, key)
 
-        value = self[key]
+        value = super().__getitem__(key)
         return value
 
     def __setattr__(self, key, value):
         if key in ("parent", "field"):
             object.__setattr__(self, key, value)
         else:
-            self[key] = value
+            super().__setitem__(key, value)
             self.save()
+
+    def __delattr__(self, key):
+        if key in ("parent", "field"):
+            object.__delattr__(self, key)
+        else:
+            super().__delitem__(key)
+            self.save()
+
+    def __getitem__(self, key):
+        value = super().__getitem__(key)
+        return value
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.save()
+
+    def __delitem__(self, key):
+        super().__delitem__(key)
+        self.save()
+
+    def clear(self):
+        if self:
+            super().clear()
+            self.save()
+
+    def pop(self, key, default=_NOT_SET):
+        if default is _NOT_SET:
+            value = super().pop(key)
+        else:
+            value = super().pop(key, default)
+        self.save()
+        return value
+
+    def popitem(self):
+        pair = super().popitem()
+        self.save()
+        return pair
+
+    def setdefault(self, key, default=None):
+        super().setdefault(key, default)
+        self.save()
+
+    def update(self, *args, **kwargs):
+        super().update(*args, **kwargs)
+        self.save()
 
     def save(self):
         """Save the dictionary into the parent."""

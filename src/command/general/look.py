@@ -36,4 +36,9 @@ class Look(Command):
 
     """Look."""
 
-    pass
+    def run(self):
+        """Run the command."""
+        number = self.db.get("number", 0)
+        number += 1
+        self.db.number = number
+        self.msg(f"You have executed this command {number} times.")

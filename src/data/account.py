@@ -38,12 +38,15 @@ An account is a player feature, NPCs don't use them at all.
 """
 
 from datetime import datetime
+import hashlib
+import os
 from typing import List, Optional, TYPE_CHECKING
 
+from dynaconf import settings
 from pydantic import EmailStr
 from pygasus import Field, Model
 
-from data.namespace import NamespaceField
+from data.handler.namespace import NamespaceField
 
 if TYPE_CHECKING:
     from data.character import Character
@@ -61,3 +64,53 @@ class Account(Model):
     created_on: datetime = Field(default_factory=datetime.utcnow)
     updated_on: datetime = Field(default_factory=datetime.utcnow)
     characters: List["Character"] = []
+
+    @staticmethod
+    def hash_password(
+        plain_password: str, salt: Optional[bytes] = None
+    ) -> bytes:
+        """Hash the given plain text password, return it hashed.
+
+        If the salt is provided, it is used for hashing.  If not,
+        it is randomly generated.
+
+        Args:
+            plain_password (str): the plain password.
+            salt (bytes, optional): the salt to use to hash the password.
+
+        Returns:
+            hashed_password (bytes): the hashed passowrd containing
+                    the salt and key.
+
+        """
+        if salt is None:
+            # Generate a random salt.
+            salt = os.urandom(settings.SALT_SIZE)
+
+        # Hash the password with pbkdf2_hmac.
+        key_size = settings.KEY_SIZE or None
+        key = hashlib.pbkdf2_hmac(
+            settings.HASH_ALGORITHM,
+            plain_password.encode("utf-8"),
+            salt,
+            settings.HASH_ITERATIONS,
+            key_size,
+        )
+
+        return salt + key
+
+    @staticmethod
+    def test_password(hashed_password: bytes, plain_password: str) -> bool:
+        """Return whether the hashed and non hashed password match.
+
+        Args:
+            hashed_password (bytes): the already-hashed password.
+            plain_password (str): the plain password to test.
+
+        Returns:
+            match (bool): whether plain_password match hashed_password.
+
+        """
+        salt = hashed_password[: settings.SALT_SIZE]
+        hashed_attempt = Account.hash_password(plain_password, salt)
+        return hashed_password == hashed_attempt

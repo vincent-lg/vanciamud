@@ -33,8 +33,9 @@ from typing import Optional, Union, TYPE_CHECKING
 
 from pygasus import Field, Model
 
-from data.contexts import ContextsField
-from data.namespace import NamespaceField
+from data.handler.contexts import ContextsField
+from data.handler.namespace import NamespaceField
+from data.handler.permissions import PermissionsField
 
 if TYPE_CHECKING:
     from data.account import Account
@@ -46,8 +47,12 @@ class Character(Model):
     """Character storage model."""
 
     id: int = Field(primary_key=True)
+    name: str
     contexts: list = Field([], custom_class=ContextsField)
     db: dict = Field({}, custom_class=NamespaceField)
+    permissions: set = Field(
+        default_factory=set, custom_class=PermissionsField
+    )
     account: Optional["Account"] = Field(None, owner=True)
     session: Optional["Session"] = Field(None, owner=True)
 

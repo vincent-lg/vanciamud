@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2022 LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,41 +27,26 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Home, the first active node in the login/chargen process."""
+"""Package to hold all commands, plus base utilities for commands.
 
-from context.base import Context
-from data.account import Account
+Static commands are contained in this package, sorted in sub-packages.
+A package should contain at least one module, within which the command
+is defined.  It is possible to define packages inside packages
+with a command hierarchy, although in most cases
+the need doesn't arise (one command per file, one folder per category,
+that's usually more than enough).
 
+Grouping commands in categories offers several advantages:
+-   The player sees commands grouped in the help file, which makes things
+    easier to understand.
+-   The category name can be defined in the package (`__init__.py` file)
+-   The command permissions can be defined in the package file too.
 
-class Home(Context):
+In the case of package containing sub-packages, the categories
+is looked up in the deeper package first, and then, if not found,
+in parent packages.
 
-    """Context displayed just after MOTD.
+"""
 
-    Input:
-        new: the user wishes to create a new account.
-        <existing account>: the user has an account and wishes to connect.
-
-    """
-
-    prompt = "Your username:"
-    text = """
-        If you already have an account, enter its username.
-        Otherwise, type 'new' to create a new account.
-    """
-
-    def input_new(self):
-        """The user has input 'new' to create a new account."""
-        self.move("new.account.username")
-
-    def other_input(self, username: str):
-        """The user entered something else."""
-        username = username.lower()
-        accounts = Account.repository.select(Account.username == username)
-        if accounts:
-            self.session.db.account = accounts[0]
-            self.move("connection.password")
-        else:
-            self.msg(
-                f"Sorry, {username} doesn't exist.  Type 'new' to "
-                "create a new account."
-            )
+from command.args import CommandArgs  # noqa: F401
+from command.base import Command  # noqa: F401

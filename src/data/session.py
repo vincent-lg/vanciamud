@@ -40,7 +40,7 @@ from pygasus import Field, Model
 from pygasus.model.decorators import lazy_property
 
 from context.base import CONTEXTS
-from data.namespace import NamespaceField
+from data.handler.namespace import NamespaceField
 
 if TYPE_CHECKING:
     from data.character import Character

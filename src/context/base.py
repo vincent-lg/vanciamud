@@ -50,6 +50,8 @@ from textwrap import dedent
 import traceback
 from typing import Optional, Union
 
+from pygasus.model.decorators import lazy_property
+
 CONTEXTS = {}
 
 
@@ -139,14 +141,21 @@ class Context:
     pyname = None
     prompt = ""
     text = ""
+    inputs = {
+        "": "press_return",
+    }
 
-    def __init__(self, session):
+    def __init__(self, session, options=None):
         self.session = session
-        self.character = None
-        self.options = {}
+        self.options = options if isinstance(options, dict) else {}
 
     def __str__(self):
         return self.pyname
+
+    @lazy_property
+    def character(self):
+        """Return the session's character, if any."""
+        return self.session and self.session.character or None
 
     def greet(self) -> Optional[str]:
         """Greet the session or character.
@@ -188,6 +197,10 @@ class Context:
 
         """
         pass
+
+    def press_return(self):
+        """Return is pressed without any input."""
+        self.refresh()
 
     def get_prompt(self):
         """Return the prompt to be displayed for this context."""
@@ -233,17 +246,21 @@ class Context:
             user_input (str): the user input.
 
         """
-        if not user_input:  # Empty input, handle it throughh the policy.
-            self.refresh()
-            return
-
         if " " in user_input:
             command, args = user_input.split(" ", 1)
         else:
             command, args = user_input, ""
 
-        # Try to find an input_{command} method
-        method = getattr(self, f"input_{command.lower()}", None)
+        # Look for an input methods.
+        method = None
+        method_name = type(self).inputs.get(command or user_input)
+        if method_name:
+            method = getattr(self, method_name, None)
+
+        if method is None:
+            # Try to find an input_{command} method
+            method = getattr(self, f"input_{command.lower()}", None)
+
         if method:
             # Pass the command argument if the method signature asks for it.
             signature = inspect.signature(method)
@@ -253,13 +270,12 @@ class Context:
                 method_args = (args,)
         else:
             method = self.other_input
-            method_args = (command,)
+            method_args = (user_input,)
 
         try:
             res = method(*method_args)
         except Exception:
             self.msg(traceback.format_exc())
-            self.quit()
             return True
 
         return res
@@ -289,16 +305,6 @@ class Context:
             Explicitly use the sub-context methods `add` or `replace`.
 
         """
-        if self.character:
-            raise ValueError(
-                "this is a character context, the current character "
-                "cannot move outside of it.  Use `add` or `replace` "
-                "to add a new context on the stack, or `quit` to remove "
-                "the current context from the stack, which cannot "
-                "be used when there is only one active context "
-                "on the context stack."
-            )
-
         NewContext = CONTEXTS[context_path]
         new_context = NewContext(self.session)
         self.leave()

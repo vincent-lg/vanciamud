@@ -27,41 +27,48 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Home, the first active node in the login/chargen process."""
 
-from context.base import Context
-from data.account import Account
+import traceback
+
+from command import Command
 
 
-class Home(Context):
+class Py(Command):
 
-    """Context displayed just after MOTD.
+    """Command to execute Python code.
 
-    Input:
-        new: the user wishes to create a new account.
-        <existing account>: the user has an account and wishes to connect.
+    Usage:
+        py <Python code to execute>
 
     """
 
-    prompt = "Your username:"
-    text = """
-        If you already have an account, enter its username.
-        Otherwise, type 'new' to create a new account.
-    """
+    alias = "python"
+    args = Command.new_parser()
+    args.add_argument("text", dest="code", optional=True)
 
-    def input_new(self):
-        """The user has input 'new' to create a new account."""
-        self.move("new.account.username")
+    def run(self, code: str = ""):
+        """Run the command."""
+        # Create the global variables
+        vars = {
+            "self": self.character,
+        }
 
-    def other_input(self, username: str):
-        """The user entered something else."""
-        username = username.lower()
-        accounts = Account.repository.select(Account.username == username)
-        if accounts:
-            self.session.db.account = accounts[0]
-            self.move("connection.password")
+        # If there's no code, open the `admin.py` context.
+        if not code:
+            context = self.session.character.contexts.add("admin.python")
+            context.variables = vars
+            return
+
+        # First try to evaluate it.
+        try:
+            result = eval(code, vars)
+        except SyntaxError:
+            # Now try running in exec mode.
+            try:
+                exec(code, vars)
+            except Exception:
+                self.msg(traceback.format_exc())
+        except Exception:
+            self.msg(traceback.format_exc())
         else:
-            self.msg(
-                f"Sorry, {username} doesn't exist.  Type 'new' to "
-                "create a new account."
-            )
+            self.msg(str(result))

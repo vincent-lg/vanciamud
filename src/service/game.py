@@ -31,11 +31,16 @@
 
 import asyncio
 from datetime import datetime
+from queue import Queue
 from uuid import UUID
 
 from service.base import BaseService
 from service.origin import Origin
 from service.shell import Shell
+
+
+# Portal commands.
+PORTAL_COMMANDS = Queue()
 
 
 class Service(BaseService):
@@ -93,6 +98,13 @@ class Service(BaseService):
         )
         self.process.should_stop.set()
 
+    async def send_portal_commands(self):
+        """Send portal commands through CRUX."""
+        host = self.services["host"]
+        while not PORTAL_COMMANDS.empty():
+            command, args = PORTAL_COMMANDS.get_nowait()
+            await host.send_cmd(host.writer, command, args)
+
     # Command handlers
     async def handle_registered_game(
         self,
@@ -146,9 +158,10 @@ class Service(BaseService):
         host = self.services["host"]
         await host.answer(origin, dict(received=datetime.utcnow()))
         session = self.data.get_session(session_id)
-        command = command.decode("utf-8", errors="replace")
+        command = command.decode(session.encoding, errors="replace")
         self.mudio.handle_input(session, command)
         await self.mudio.send_output(input_id)
+        await self.send_portal_commands()
 
     async def handle_new_session(
         self,
@@ -183,6 +196,7 @@ class Service(BaseService):
         )
         session.context.enter()
         await self.mudio.send_output(0)
+        await self.send_portal_commands()
 
     async def handle_disconnect_session(
         self,
@@ -202,6 +216,7 @@ class Service(BaseService):
         self.logger.debug(f"Deletion of a session: {session_id}")
         deletion = self.data.delete_session(session_id)
         await self.host.answer(origin, dict(deletion=deletion))
+        await self.send_portal_commands()
 
     async def handle_shell(self, origin: Origin, code: str):
         """Execute arbitrary Python code.
@@ -220,3 +235,6 @@ class Service(BaseService):
         if host.writer:
             display = self.console.output
             await host.answer(origin, dict(display=display, prompt=prompt))
+
+        await self.mudio.send_output(0)
+        await self.send_portal_commands()

@@ -27,41 +27,63 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Home, the first active node in the login/chargen process."""
+"""Display the meny to connect to a character."""
 
 from context.base import Context
-from data.account import Account
 
 
-class Home(Context):
+class Choice(Context):
 
-    """Context displayed just after MOTD.
+    """Context displayed when the user has entered the account's password.
 
     Input:
-        new: the user wishes to create a new account.
-        <existing account>: the user has an account and wishes to connect.
+        <number>: a character's number.
+        /: slash, go back to connection.home.
 
     """
 
-    prompt = "Your username:"
-    text = """
-        If you already have an account, enter its username.
-        Otherwise, type 'new' to create a new account.
-    """
+    prompt = "Your choice:"
 
-    def input_new(self):
-        """The user has input 'new' to create a new account."""
-        self.move("new.account.username")
-
-    def other_input(self, username: str):
-        """The user entered something else."""
-        username = username.lower()
-        accounts = Account.repository.select(Account.username == username)
-        if accounts:
-            self.session.db.account = accounts[0]
-            self.move("connection.password")
+    def refresh(self):
+        """When entering the context."""
+        # Move to create a character if none exists in this account.
+        account = self.session.db.account
+        if not account.characters:
+            self.move("new.character.name")
         else:
-            self.msg(
-                f"Sorry, {username} doesn't exist.  Type 'new' to "
-                "create a new account."
+            super().refresh()
+
+    def greet(self):
+        """Return the text to display."""
+        account = self.session.db.account
+        lines = [
+            f"Welcome to your account, {account.username}!",
+            "Please enter one of the following choices:",
+        ]
+
+        i = 1
+        for character in account.characters:
+            lines.append(
+                f"  {i:>2} to connect to the character {character.name}."
             )
+            i += 1
+
+        lines.append("  C to create a new character in this account.")
+        return "\n".join(lines)
+
+    def input_c(self):
+        """Create a new character in this account."""
+        self.move("new.character.name")
+
+    def other_input(self, user_input: str):
+        """The user entered something else."""
+        account = self.session.db.account
+        i = 1
+        for character in account.characters:
+            if user_input == str(i):
+                self.session.db.character = character
+                self.move("character.login")
+                return True
+            i += 1
+
+        self.msg("This is not a valid option.")

@@ -27,41 +27,56 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Home, the first active node in the login/chargen process."""
+"""Create a character name, first process in character creation."""
+
+from dynaconf import settings
 
 from context.base import Context
-from data.account import Account
 
 
-class Home(Context):
+class Name(Context):
 
-    """Context displayed just after MOTD.
+    """Context displayed when the user has entered 'c' in character.choice.
 
     Input:
-        new: the user wishes to create a new account.
-        <existing account>: the user has an account and wishes to connect.
+        <new name>: the name of the character to create.
+        /: slash, go back to character.choice.
 
     """
 
-    prompt = "Your username:"
+    prompt = "Your new character's name:"
     text = """
-        If you already have an account, enter its username.
-        Otherwise, type 'new' to create a new account.
+        New character.
+
+        You have to enter the name of your new character.  This name
+        will be visible to other characters (and players) in the game.
     """
 
-    def input_new(self):
-        """The user has input 'new' to create a new account."""
-        self.move("new.account.username")
-
-    def other_input(self, username: str):
+    def other_input(self, name: str):
         """The user entered something else."""
-        username = username.lower()
-        accounts = Account.repository.select(Account.username == username)
-        if accounts:
-            self.session.db.account = accounts[0]
-            self.move("connection.password")
-        else:
+        name = name.strip()
+        name = name[0].upper() + name[1:].lower()
+        min_size = settings.MIN_CHARACTER_NAME
+
+        # Check that the name isn't too short.
+        if len(name) < min_size:
             self.msg(
-                f"Sorry, {username} doesn't exist.  Type 'new' to "
-                "create a new account."
+                f"The name {name!r} is incorrect.  It should be "
+                f"at least {min_size} characters in length.  "
+                "Please try again."
             )
+            return
+
+        # Check that the username isn't a forbidden name.
+        forbidden = [
+            name.lower() for name in settings.FORBIDDEN_CHARACTER_NAMES
+        ]
+        if name.lower() in forbidden:
+            self.msg(
+                f"The name {name!r} is forbidden.  Please "
+                "choose another one."
+            )
+            return
+
+        self.session.db.name = name
+        self.move("new.character.complete")

@@ -1,4 +1,4 @@
-# Copyright (c) 2021, LE GOFF Vincent
+# Copyright (c) 2022, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,46 +27,86 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Namespace custom field."""
-
-import pickle
+"""Permissions custom field, to hold permissions."""
 
 from pygasus.model import CustomField
 
 
-class Namespace(dict):
+class Permissions(set):
 
-    """A namespace, holding attribute-like flexible data."""
+    """A set of permissions."""
 
     def __init__(self, *args, **kwargs):
         self.parent = None
         self.field = None
         super().__init__(*args, **kwargs)
 
-    def __getattr__(self, key):
-        if key in ("parent", "field", "_data"):
-            return object.__getattr__(self, key)
-        return self[key]
+    def add(self, permission: str):
+        """Add permissions.
 
-    def __setattr__(self, key, value):
-        if key in ("parent", "field", "_data"):
-            object.__setattr__(self, key, value)
-        else:
-            self[key] = value
+        Args:
+            permission (str): the permission to add.
+
+        """
+        if " " in permission:
+            raise ValueError("a permission cannot contain spaces")
+
+        if permission not in self:
+            super().add(permission)
+            self.save()
+
+    def clear(self):
+        """Remove all permissions."""
+        if len(self) > 1:
+            super().clear()
+            self.save()
+
+    def discard(self, permission: str):
+        """Remove a permission.
+
+        Args:
+            permission (str): the permission to remove.
+
+        """
+        if permission in self:
+            super().discard(permission)
+            self.save()
+
+    def has(self, permission: str) -> bool:
+        """Return whether this permission is in the set.
+
+        Args:
+            permission (str): the permission to test.
+
+        Returns:
+            has (bool): whether this set has this permission.
+
+        """
+        return permission in self
+
+    def remove(self, permission: str):
+        """Remove a permission.
+
+        Args:
+            permission (str): the permission to remove.
+
+        """
+        if permission in self:
+            super().remove(permission)
             self.save()
 
     def save(self):
-        """Save the dictionary into the parent."""
+        """Save the list of contexts in the parent."""
         type(self.parent).repository.update(
-            self.parent, self.field, {}, self.copy()
+            self.parent, self.field, set(), self.copy()
         )
 
 
-class NamespaceField(CustomField):
+class PermissionsField(CustomField):
 
-    """A dictionary stored in a pickled bytestring."""
+    """A set of permissions stored in a string."""
 
-    field_name = "namespace"
+    field_name = "permissions"
 
     def add(self):
         """Add this field to a model.
@@ -75,7 +115,7 @@ class NamespaceField(CustomField):
             annotation type (Any): the type of field to store.
 
         """
-        return bytes
+        return str
 
     def to_storage(self, value):
         """Return the value to store in the storage engine.
@@ -88,9 +128,9 @@ class NamespaceField(CustomField):
             It must be of the same type as returned by `add`.
 
         """
-        return pickle.dumps(dict(value))
+        return " ".join(value)
 
-    def to_field(self, value: bytes):
+    def to_field(self, value: str):
         """Convert the stored value to the field value.
 
         Args:
@@ -102,4 +142,9 @@ class NamespaceField(CustomField):
             in the model.
 
         """
-        return Namespace(pickle.loads(value))
+        if value:
+            permissions = value.split(" ")
+        else:
+            permissions = set()
+
+        return Permissions(permissions)

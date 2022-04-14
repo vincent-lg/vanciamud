@@ -108,6 +108,21 @@ forbidden_usernames = [
     "test",
 ]
 
+# Minimum length of an character name
+# (Obviously, 1 is the very minimum):
+min_character_name = 4
+
+# Forbidden character names
+# These names aren't allowed.  That's an array (a list) of names.
+# You can add or remove to it.  Case isn't a factor (if you forbid "test",
+# then "Test" or "TEST" will be rejected as username).
+forbidden_character_names = [
+    "guest",
+    "talismud",
+    "temp",
+    "test",
+]
+
 # Minimum length of account password (in characters)
 min_account_password = 6
 

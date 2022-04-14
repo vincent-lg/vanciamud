@@ -66,6 +66,7 @@ class Service(CmdMixin, BaseService):
         self.serving_task = None
         self.serving_ssl_task = None
         self.sessions = {}
+        self.writing_lock = asyncio.Lock()
         self.buffers = {}
         self.CRUX = None
         self.stats = []
@@ -324,17 +325,20 @@ class Service(CmdMixin, BaseService):
 
         return session
 
-    async def disconnect_session(self, session: "Session"):
+    async def disconnect_session(self, session_id: UUID):
         """Disconnect the given session.
 
         Args:
-            session (Session): the session to disconnect.
+            session_id (UUID): the session ID.
 
         """
-        if session.writer:
-            self.logger.debug(f"Diconnecting session ID {session.uuid}.")
-            session.writer.close()
-            await session.writer.wait_closed()
+        session = self.sessions.get(session_id)
+        if session and session.writer:
+            async with self.writing_lock:
+                self.logger.debug(f"Diconnecting session ID {session.uuid}.")
+                session.writer.close()
+                await session.writer.wait_closed()
+        self.sessions.pop(session_id, None)
 
     async def send_input(self, session: "Session", command: bytes):
         """Called when an input line was sent by the client."""
@@ -384,8 +388,9 @@ class Service(CmdMixin, BaseService):
         session = self.sessions.get(session_id)
         if session:
             try:
-                session.writer.write(message)
-                await session.writer.drain()
+                async with self.writing_lock:
+                    session.writer.write(message)
+                    await session.writer.drain()
             except ConnectionError:
                 await self.error_read(session)
                 return

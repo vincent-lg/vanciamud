@@ -27,41 +27,62 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Home, the first active node in the login/chargen process."""
+"""Create a username, first process in account creation."""
+
+from dynaconf import settings
 
 from context.base import Context
 from data.account import Account
 
 
-class Home(Context):
+class Username(Context):
 
-    """Context displayed just after MOTD.
+    """Context displayed when the user has entered 'new' in MOTD.
 
     Input:
-        new: the user wishes to create a new account.
-        <existing account>: the user has an account and wishes to connect.
+        <new username>: the username to create.
+        /: slash, go back to connection.home.
 
     """
 
-    prompt = "Your username:"
+    prompt = "Your new username:"
     text = """
-        If you already have an account, enter its username.
-        Otherwise, type 'new' to create a new account.
-    """
+        New user, welcome to TalisMUD!
 
-    def input_new(self):
-        """The user has input 'new' to create a new account."""
-        self.move("new.account.username")
+        You wish to create a new account.  The first step for you is
+        to create a username.  This username (and the password you will
+        select next) will be needed to access your characters.
+        You should choose both a username and password no one can easily
+        guess.
+
+        Keep your accout username and future characters' names different;
+        otherwise, it will make it much easier to steal your account.
+    """
 
     def other_input(self, username: str):
         """The user entered something else."""
-        username = username.lower()
-        accounts = Account.repository.select(Account.username == username)
-        if accounts:
-            self.session.db.account = accounts[0]
-            self.move("connection.password")
-        else:
+        username = username.lower().strip()
+        min_size = settings.MIN_ACCOUNT_USERNAME
+
+        # Check that the name isn't too short.
+        if len(username) < min_size:
             self.msg(
-                f"Sorry, {username} doesn't exist.  Type 'new' to "
-                "create a new account."
+                f"The username {username!r} is incorrect.  It should be "
+                f"at least {min_size} characters in length.  "
+                "Please try again."
             )
+            return
+
+        # Check that the username isn't a forbidden name.
+        accounts = Account.repository.select(Account.username == username)
+        forbidden = [name.lower() for name in settings.FORBIDDEN_USERNAMES]
+        if username in forbidden or accounts:
+            self.msg(
+                f"The username {username!r} is forbidden.  Please "
+                "choose another one."
+            )
+            return
+
+        self.msg(f"You selected the username: {username!r}.")
+        self.session.db.username = username
+        self.move("new.account.password")

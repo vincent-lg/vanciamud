@@ -229,10 +229,9 @@ class Service(BaseService):
         self.logger.debug("Asked to restart the game...")
         if announce:
             # Announce to all contected clients
-            pass
-            # telnet = self.services["telnet"]
-            # for session_id in telnet.sessions.keys():
-            #    await telnet.write_to(session_id, "Restarting the game ...")
+            telnet = self.services["telnet"]
+            for session_id in telnet.sessions.keys():
+                await telnet.write_to(session_id, "Restarting the game ...")
 
         await self.handle_stop_game(origin.reader)
         begin = time.time()
@@ -257,10 +256,9 @@ class Service(BaseService):
 
         if announce and self.game_id:
             # Announce to all contected clients
-            pass
-            # telnet = self.services["telnet"]
-            # for session_id in telnet.sessions.keys():
-            #    await telnet.write_to(session_id, "... game restarted!")
+            telnet = self.services["telnet"]
+            for session_id in telnet.sessions.keys():
+                await telnet.write_to(session_id, "... game restarted!")
 
     async def handle_stop_portal(self, origin: Origin):
         """Handle the stop_portal command."""
@@ -280,7 +278,6 @@ class Service(BaseService):
         If important, the reason should have been given beforehand.
 
         """
-        return
         telnet = self.services["telnet"]
         await telnet.disconnect_session(session_id)
 

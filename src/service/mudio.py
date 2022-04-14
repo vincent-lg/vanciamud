@@ -35,8 +35,10 @@ from importlib import import_module
 from pathlib import Path
 from typing import Optional
 
+from command.base import Command, COMMANDS
+from command.log import logger as cmd_logger
 from context.base import Context, CONTEXTS
-from context.log import logger
+from context.log import logger as ctx_logger
 from data.session import Session, OUTPUT_QUEUE
 from service.base import BaseService
 
@@ -65,10 +67,12 @@ class Service(BaseService):
         """
         self.output_lock = asyncio.Lock()
         self.contexts = {}
+        self.commands = {}
 
     async def setup(self):
         """Set the MudIO up."""
         self.load_contexts()
+        self.load_commands()
 
     async def cleanup(self):
         """Clean the service up before shutting down."""
@@ -89,7 +93,7 @@ class Service(BaseService):
         forbidden = (Context,)
 
         # Search the context files.
-        logger.debug("Preparing to load all contexts...")
+        ctx_logger.debug("Preparing to load all contexts...")
         loaded = 0
         for path in paths:
             for file_path in path.rglob("*.py"):
@@ -111,7 +115,7 @@ class Service(BaseService):
                 try:
                     module = import_module(pypath)
                 except Exception:
-                    logger.exception(
+                    ctx_logger.exception(
                         f"  An error occurred when importing {pypath}:"
                     )
                     continue
@@ -137,17 +141,19 @@ class Service(BaseService):
                             NewContext = value
 
                 if NewContext is None:
-                    logger.warning(f"No context could be found in {pypath}.")
+                    ctx_logger.warning(
+                        f"No context could be found in {pypath}."
+                    )
                     continue
                 elif NewContext is ...:
-                    logger.warning(
+                    ctx_logger.warning(
                         "More than one contexts are present "
                         f"in module {pypath}, not loading any."
                     )
                     continue
                 else:
                     loaded += 1
-                    logger.debug(
+                    ctx_logger.debug(
                         f"  Load the context in {pypath} (name={py_unique!r})"
                     )
                     self.contexts[py_unique] = NewContext
@@ -155,9 +161,99 @@ class Service(BaseService):
 
         s = "s" if loaded > 1 else ""
         was = "were" if loaded > 1 else "was"
-        logger.debug(f"{loaded} context{s} {was} loaded successfully.")
+        ctx_logger.debug(f"{loaded} context{s} {was} loaded successfully.")
         CONTEXTS.clear()
         CONTEXTS.update(self.contexts)
+
+    def load_commands(self):
+        """Load the commands dynamically.
+
+        This method is called when the game starts.
+
+        """
+        parent = Path()
+        paths = (parent / "command",)
+
+        exclude = (
+            parent / "command" / "args",
+            parent / "command" / "base.py",
+            parent / "command" / "log.py",
+        )
+        forbidden = (Command,)
+
+        # Search the command files.
+        cmd_logger.debug("Preparing to load all commands...")
+        loaded = 0
+        for path in paths:
+            for file_path in path.rglob("*.py"):
+                if file_path in exclude or any(
+                    to_ex in file_path.parents for to_ex in exclude
+                ):
+                    continue
+
+                # Search for the module to begin.
+                if file_path.name.startswith("_"):
+                    continue
+
+                # Assume this is a module containing ONE command.
+                relative = file_path.relative_to(path)
+                pypath = ".".join(file_path.parts)[:-3]
+                py_unique = ".".join(relative.parts)[:-3]
+
+                # Try to import it.
+                try:
+                    module = import_module(pypath)
+                except Exception:
+                    cmd_logger.exception(
+                        f"  An error occurred when importing {pypath}:"
+                    )
+                    continue
+
+                # Explore the module to try to import ONE command.
+                NewCommand = None
+                for name, value in module.__dict__.items():
+                    if name.startswith("_"):
+                        continue
+
+                    if (
+                        isinstance(value, type)
+                        and value not in forbidden
+                        and issubclass(value, Command)
+                    ):
+                        if value.__module__ != pypath:
+                            continue
+
+                        if NewCommand is not None:
+                            NewCommand = ...
+                            break
+                        else:
+                            NewCommand = value
+
+                if NewCommand is None:
+                    cmd_logger.warning(
+                        f"No command could be found in {pypath}."
+                    )
+                    continue
+                elif NewCommand is ...:
+                    cmd_logger.warning(
+                        "More than one command are present "
+                        f"in module {pypath}, not loading any."
+                    )
+                    continue
+                else:
+                    loaded += 1
+                    cmd_logger.debug(
+                        f"  Load the command in {pypath} (name={py_unique!r})"
+                    )
+                    self.commands[py_unique] = NewCommand
+                    NewCommand.pyname = py_unique
+                    NewCommand.extrapolate(file_path)
+
+        s = "s" if loaded > 1 else ""
+        was = "were" if loaded > 1 else "was"
+        cmd_logger.debug(f"{loaded} command{s} {was} loaded successfully.")
+        COMMANDS.clear()
+        COMMANDS.update(self.commands)
 
     def handle_input(self, session: Session, command: str):
         """Handle input from a session.

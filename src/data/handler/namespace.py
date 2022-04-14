@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2021, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,34 +27,48 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Contexts custom field, to hold contexts."""
+"""Namespace custom field."""
 
 import pickle
 
 from pygasus.model import CustomField
 
 
-class Contexts(list):
+class Namespace(dict):
 
-    """An extended list of contexts for a character."""
+    """A namespace, holding attribute-like flexible data."""
 
-    def __init__(self, contexts=None):
+    def __init__(self, *args, **kwargs):
         self.parent = None
         self.field = None
-        self._contexts = contexts or []
+        super().__init__(*args, **kwargs)
+
+    def __getattr__(self, key):
+        if key in ("parent", "field", "_data"):
+            return object.__getattr__(self, key)
+
+        value = self[key]
+        return value
+
+    def __setattr__(self, key, value):
+        if key in ("parent", "field", "_data"):
+            object.__setattr__(self, key, value)
+        else:
+            self[key] = value
+            self.save()
 
     def save(self):
-        """Save the list of contexts in the parent."""
+        """Save the dictionary into the parent."""
         type(self.parent).repository.update(
-            self.parent, self.field, {}, self._contexts
+            self.parent, self.field, {}, self.copy()
         )
 
 
-class ContextsField(CustomField):
+class NamespaceField(CustomField):
 
-    """A list stored in a pickled bytestring."""
+    """A dictionary stored in a pickled bytestring."""
 
-    field_name = "contexts"
+    field_name = "namespace"
 
     def add(self):
         """Add this field to a model.
@@ -76,9 +90,7 @@ class ContextsField(CustomField):
             It must be of the same type as returned by `add`.
 
         """
-        if isinstance(value, Contexts):
-            value = value._contexts
-        return pickle.dumps(value)
+        return pickle.dumps(value.copy())
 
     def to_field(self, value: bytes):
         """Convert the stored value to the field value.
@@ -92,7 +104,4 @@ class ContextsField(CustomField):
             in the model.
 
         """
-        data = pickle.loads(value)
-        if isinstance(data, Contexts):
-            data = data._contexts
-        return Contexts(contexts=data)
+        return Namespace(pickle.loads(value))

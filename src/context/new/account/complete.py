@@ -27,41 +27,26 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Home, the first active node in the login/chargen process."""
+"""Complete the account creation, a ghost context."""
 
 from context.base import Context
 from data.account import Account
 
 
-class Home(Context):
+class Complete(Context):
 
-    """Context displayed just after MOTD.
+    """Ghost context only displayed when the account can be created."""
 
-    Input:
-        new: the user wishes to create a new account.
-        <existing account>: the user has an account and wishes to connect.
-
-    """
-
-    prompt = "Your username:"
-    text = """
-        If you already have an account, enter its username.
-        Otherwise, type 'new' to create a new account.
-    """
-
-    def input_new(self):
-        """The user has input 'new' to create a new account."""
-        self.move("new.account.username")
-
-    def other_input(self, username: str):
-        """The user entered something else."""
-        username = username.lower()
-        accounts = Account.repository.select(Account.username == username)
-        if accounts:
-            self.session.db.account = accounts[0]
-            self.move("connection.password")
-        else:
-            self.msg(
-                f"Sorry, {username} doesn't exist.  Type 'new' to "
-                "create a new account."
-            )
+    def refresh(self):
+        """Leave this context at once."""
+        username = self.session.db.username
+        password = self.session.db.password
+        email = self.session.db.email
+        account = Account.repository.create(
+            username=username, hashed_password=password, email=email
+        )
+        self.msg(
+            f"The account {username} has been created successfully.  Welcome!"
+        )
+        self.session.db.account = account
+        self.move("character.choice")

@@ -27,41 +27,15 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Home, the first active node in the login/chargen process."""
-
-from context.base import Context
-from data.account import Account
+"""Argument error."""
 
 
-class Home(Context):
+class ArgumentError:
 
-    """Context displayed just after MOTD.
+    """Error returned when an error occurred in parsing."""
 
-    Input:
-        new: the user wishes to create a new account.
-        <existing account>: the user has an account and wishes to connect.
+    def __init__(self, message):
+        self.message = message
 
-    """
-
-    prompt = "Your username:"
-    text = """
-        If you already have an account, enter its username.
-        Otherwise, type 'new' to create a new account.
-    """
-
-    def input_new(self):
-        """The user has input 'new' to create a new account."""
-        self.move("new.account.username")
-
-    def other_input(self, username: str):
-        """The user entered something else."""
-        username = username.lower()
-        accounts = Account.repository.select(Account.username == username)
-        if accounts:
-            self.session.db.account = accounts[0]
-            self.move("connection.password")
-        else:
-            self.msg(
-                f"Sorry, {username} doesn't exist.  Type 'new' to "
-                "create a new account."
-            )
+    def __str__(self):
+        return self.message

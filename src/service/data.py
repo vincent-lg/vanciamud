@@ -39,9 +39,10 @@ from pygasus.storage import SQLStorageEngine
 
 from data.account import Account
 from data.character import Character
-from data.contexts import ContextsField
+from data.handler.contexts import ContextsField
+from data.handler.namespace import Namespace, NamespaceField
+from data.handler.permissions import PermissionsField
 from data.log import logger
-from data.namespace import Namespace, NamespaceField
 from data.session import Session
 from service.base import BaseService
 from service.shell import Shell
@@ -67,6 +68,7 @@ class Service(BaseService):
         self.engine.bind({Account, Character, Session})
         self.engine.add_custom_field(ContextsField)
         self.engine.add_custom_field(NamespaceField)
+        self.engine.add_custom_field(PermissionsField)
 
     async def setup(self):
         """Set the portal up."""

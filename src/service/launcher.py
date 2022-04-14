@@ -430,7 +430,6 @@ class Service(BaseService):
         if not init_started:
             await self.action_start(args)
 
-        print("I'm started")
         # In a loop, ask user input and send the Python command
         # to the portal, which will forward it to the game, which
         # will evaluate and answer in the same way.

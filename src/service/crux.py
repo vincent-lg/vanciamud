@@ -41,6 +41,8 @@ HOST clients) can be found in `service/cmd.py`.
 """
 
 import asyncio
+import os
+import platform
 import secrets
 from typing import Any, Optional
 
@@ -80,7 +82,12 @@ class Service(CmdMixin, BaseService):
         # Create a random secret key which will be used to sign/unsign
         # CRUX messages between server and clients.
         self.logger.debug("Generating a secret key")
-        keyring.set_password("talismud", "CRUX", secrets.token_urlsafe(32))
+        token = secrets.token_urlsafe(32)
+        if platform.system() == "Linux":
+            with open(".crux", "w", encoding="utf-8") as file:
+                file.write(token)
+        else:
+            keyring.set_password("talismud", "CRUX", token)
         self.read_secret_key()
 
     async def setup(self):
@@ -96,7 +103,10 @@ class Service(CmdMixin, BaseService):
             self.serving_task.cancel()
 
         # Remove the secret key.
-        keyring.delete_password("talismud", "CRUX")
+        if platform.system() == "Linux":
+            os.remove(".crux")
+        else:
+            keyring.delete_password("talismud", "CRUX")
 
     async def start_serving(self):
         """Prepare to serve."""

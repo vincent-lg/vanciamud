@@ -224,6 +224,7 @@ class Process(metaclass=ABCMeta):
         elif platform.system() == "Linux":
             if frozen:
                 command = "./" + command
+            command = split(command)
 
         self.logger.debug(
             f"Starting the {process_name!r} process: {command!r}, "

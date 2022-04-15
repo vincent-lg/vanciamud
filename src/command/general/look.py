@@ -38,6 +38,6 @@ class Look(Command):
 
     def run(self):
         """Run the command."""
-        number = self.db.setdefault("number", 0)
+        self.db.setdefault("number", 0)
         self.db.number += 1
         self.msg(f"You have executed this command {self.db.number} times.")

@@ -95,6 +95,7 @@ CRUX protocol:
 import asyncio
 from itertools import count
 import pickle
+import platform
 from struct import calcsize, error as struct_error, pack, unpack
 import time
 from typing import Any, Optional
@@ -152,7 +153,12 @@ class CmdMixin:
             return
 
         self.logger.debug("Fetching the secret key...")
-        self.secret_key = keyring.get_password("talismud", "CRUX")
+        if platform.system() == "Linux":
+            with open(".crux", "r", encoding="utf-8") as file:
+                self.secret_key = file.read()
+        else:
+            self.secret_key = keyring.get_password("talismud", "CRUX")
+
         if not self.secret_key:
             self.logger.debug("The secret key couldn't be loaded.")
             return

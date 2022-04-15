@@ -55,9 +55,10 @@ class Help(Command):
     def run(self, name):
         """Run the command."""
         commands = {command.name: command for command in COMMANDS.values()}
-        if (character := self.character):
+        if character := self.character:
             commands = {
-                name: command for name, command in commands.items()
+                name: command
+                for name, command in commands.items()
                 if command.can_run(character)
             }
 

@@ -32,6 +32,7 @@
 from importlib import import_module
 import inspect
 from pathlib import Path
+from textwrap import dedent
 import traceback
 from typing import Any, Dict, Sequence, TYPE_CHECKING
 
@@ -40,6 +41,7 @@ from pygasus.model.decorators import lazy_property
 from command.args import ArgumentError, CommandArgs, Namespace
 from command.log import logger
 from command.namespace import ProxyNamespace
+from tools.delay import Delay
 
 if TYPE_CHECKING:
     from data.character import Character
@@ -177,6 +179,7 @@ class Command:
 
         return True
 
+    @classmethod
     def get_help(cls, character=None) -> str:
         """Return the help of a command, tailored for a character.
 
@@ -196,7 +199,8 @@ class Command:
             help (str): the command help as a str.
 
         """
-        return inspect.getdoc(cls)
+        docstring = inspect.getdoc(cls)
+        return dedent(docstring)
 
     @classmethod
     def new_parser(self) -> CommandArgs:
@@ -258,6 +262,19 @@ class Command:
 
         """
         self.character.msg(text)
+
+    def call_in(self, *args, **kwargs):
+        """Schedule a callback to run in X seconds.
+
+        Args:
+            delay (int or float or timedelta): the delay (in seconds).
+            callback (Callable): the callback (usually an instance method).
+
+        Additional positional or keyword arguments will be sent to the
+        callback when it's time to execute it.
+
+        """
+        return Delay.schedule(*args, **kwargs)
 
     @classmethod
     def extrapolate(cls, path: Path):

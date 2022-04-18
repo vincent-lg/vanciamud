@@ -23,7 +23,7 @@ dynaconf = "^3.1.7"
 itsdangerous = "^2.0.1"
 keyring = "^23.2.1"
 logbook = "^1.5.3"
-pygasus = "^0.9"
+pygasus = "^0.10"
 python = "3.9"
 
 [tool.poetry.dev-dependencies]

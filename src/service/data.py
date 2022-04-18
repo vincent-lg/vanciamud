@@ -35,14 +35,8 @@ from typing import Optional
 from uuid import UUID
 
 from dynaconf import settings
-from pygasus.storage import SQLStorageEngine
 
-from data.account import Account
-from data.character import Character
-from data.delay import Delay
-from data.handler.contexts import ContextsField
-from data.handler.namespace import Namespace, NamespaceField
-from data.handler.permissions import PermissionsField
+from data.base import handle_data
 from data.log import logger
 from data.session import Session
 from service.base import BaseService
@@ -64,12 +58,8 @@ class Service(BaseService):
         often are created there for consistency.
 
         """
-        self.engine = SQLStorageEngine()
-        self.engine.init("talismud.db", logging=self.log_query)
-        self.engine.bind({Account, Character, Delay, Session})
-        self.engine.add_custom_field(ContextsField)
-        self.engine.add_custom_field(NamespaceField)
-        self.engine.add_custom_field(PermissionsField)
+        self.engine = handle_data()
+        self.engine.logging = self.log_query
 
     async def setup(self):
         """Set the portal up."""
@@ -80,13 +70,9 @@ class Service(BaseService):
 
     def setup_shell(self, shell: Shell):
         """Setup the shell,a dding variables."""
-        shell.locals.update(
-            {
-                "Account": Account,
-                "Character": Character,
-                "Session": Session,
-            },
-        )
+        # Add every data model as locals.
+        for model in self.engine.models.values():
+            shell.locals[model.__name__] = model
 
     async def new_session(
         self,
@@ -114,7 +100,6 @@ class Service(BaseService):
             encoding=settings.DEFAULT_ENCODING,
             context_path="connection.motd",
             context_options=pickle.dumps({}),
-            db=Namespace(),
         )
         return session
 
@@ -126,6 +111,7 @@ class Service(BaseService):
         """Delete, if found, the stored session with this UUID."""
         if session := self.get_session(session_id):
             logger.debug(f"The session {session_id} is to be deleted.")
+            session.logout()
             Session.repository.delete(session)
             return True
 

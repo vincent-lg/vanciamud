@@ -62,7 +62,15 @@ class Game(Context):
 
     def greet(self) -> str:
         """Return the active context's greeting."""
-        return "Here I am!"
+        room = self.character.room
+        if room:
+            lines = [
+                room.title,
+                room.description.format(),
+            ]
+            return "\n".join(lines)
+
+        return "You are floating in the void..."
 
     def handle_input(self, user_input: str):
         """Route the user input to the context stack."""

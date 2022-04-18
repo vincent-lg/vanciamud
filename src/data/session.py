@@ -96,3 +96,9 @@ class Session(Model):
 
         if isinstance(text, bytes):
             OUTPUT_QUEUE.put((self.uuid, text))
+
+    def logout(self):
+        """Prepare the session for logout."""
+        if character := self.character:
+            character.db.log_at = character.room
+            character.room.characters.remove(character)

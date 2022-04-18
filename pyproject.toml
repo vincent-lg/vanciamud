@@ -15,6 +15,9 @@ include = [
     "LICENSE",
 ]
 
+[tool.poetry.scripts]
+talismud = 'talismud:run'
+
 [tool.poetry.dependencies]
 async-timeout = "^4.0.1"
 beautifultable = "^1.0.1"
@@ -24,6 +27,7 @@ itsdangerous = "^2.0.1"
 keyring = "^23.2.1"
 logbook = "^1.5.3"
 pygasus = "^0.10"
+pyyaml = "^6.0"
 python = "3.9"
 
 [tool.poetry.dev-dependencies]

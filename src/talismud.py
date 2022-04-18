@@ -47,3 +47,7 @@ except KeyboardInterrupt:
     launcher.should_stop.set()
 finally:
     loop.run_until_complete(launcher.stop())
+
+
+def run():
+    """Do nothing."""

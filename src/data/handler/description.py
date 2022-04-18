@@ -216,3 +216,8 @@ class DescriptionField(CustomField):
 
         """
         return Description(value)
+
+    @staticmethod
+    def from_blueprint(handler: Description, text: str):
+        """Set the description."""
+        handler.set(text)

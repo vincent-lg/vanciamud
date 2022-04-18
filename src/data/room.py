@@ -45,7 +45,7 @@ class Room(Model):
     """Model to represent a room."""
 
     id: int = Field(primary_key=True)
-    barcode: str = Field(index=True, unique=True)
+    barcode: str = Field(bpk=True, index=True, unique=True)
     title: str
     description: str = Field(custom_class=DescriptionField)
     db: dict = Field({}, custom_class=NamespaceField)

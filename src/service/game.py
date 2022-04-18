@@ -50,7 +50,7 @@ class Service(BaseService):
     """The game's main service."""
 
     name = "game"
-    sub_services = ("host", "data", "mudio")
+    sub_services = ("host", "data", "mudio", "world")
 
     async def init(self):
         """Asynchronously initialize the service.

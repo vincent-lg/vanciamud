@@ -38,6 +38,12 @@ class Look(Command):
 
     def run(self):
         """Run the command."""
-        self.db.setdefault("number", 0)
-        self.db.number += 1
-        self.msg(f"You have executed this command {self.db.number} times.")
+        room = self.character.room
+        if room:
+            lines = [
+                room.title,
+                room.description.format(),
+            ]
+            self.msg("\n".join(lines))
+        else:
+            self.msg("You are floating in the void...")

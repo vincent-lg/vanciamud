@@ -67,6 +67,10 @@ sub_sessions = subparsers.add_parser(
     "sessions", help="show the list of connected Telnet sessions"
 )
 sub_sessions.set_defaults(action="sessions")
+sub_migrate = subparsers.add_parser(
+    "migrate", help="create or bring to date the database"
+)
+sub_migrate.set_defaults(action="migrate")
 
 
 class Launcher(Process):

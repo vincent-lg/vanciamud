@@ -31,8 +31,10 @@
 
 import argparse
 from enum import Enum, Flag, auto
+from pathlib import Path
 from uuid import UUID
 
+from alembic.config import CommandLine as AlembicCommandLine
 from beautifultable import BeautifulTable
 
 from service.base import BaseService
@@ -453,3 +455,13 @@ class Service(BaseService):
         # If the game wasn't started before executing code, stop it.
         if not init_started:
             await self.action_stop(args)
+
+    async def action_migrate(self, args: argparse.ArgumentParser):
+        """Migrate the database."""
+        db_path = Path("talismud.db")
+        if db_path.exists():
+            # Migrate the database.
+            AlembicCommandLine("alembic").main(["upgrade", "head"])
+        else:
+            # Create the database file.
+            AlembicCommandLine("alembic").main(["stamp", "head"])

@@ -34,7 +34,9 @@ from typing import List, TYPE_CHECKING
 from pygasus import Field, Model
 
 from data.handler.description import DescriptionField
+from data.handler.exits import ExitsField
 from data.handler.namespace import NamespaceField
+from data.exit import Exit
 
 if TYPE_CHECKING:
     from data.character import Character
@@ -48,5 +50,9 @@ class Room(Model):
     barcode: str = Field(bpk=True, index=True, unique=True)
     title: str
     description: str = Field(custom_class=DescriptionField)
+    exits: dict = Field({}, custom_class=ExitsField)
     db: dict = Field({}, custom_class=NamespaceField)
     characters: List["Character"] = []
+
+
+Exit.room = Room

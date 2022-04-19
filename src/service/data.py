@@ -58,8 +58,7 @@ class Service(BaseService):
         often are created there for consistency.
 
         """
-        self.engine = handle_data()
-        self.engine.logging = self.log_query
+        self.engine = handle_data(logging=self.log_query)
 
     async def setup(self):
         """Set the portal up."""

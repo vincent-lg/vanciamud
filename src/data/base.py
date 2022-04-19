@@ -29,6 +29,8 @@
 
 """The base data model, responsible for all data storage."""
 
+from typing import Callable
+
 from pygasus.storage import SQLStorageEngine
 
 from data.account import Account
@@ -36,19 +38,23 @@ from data.character import Character
 from data.delay import Delay
 from data.handler.contexts import ContextsField
 from data.handler.description import DescriptionField
+from data.handler.exits import ExitsField
 from data.handler.namespace import NamespaceField
 from data.handler.permissions import PermissionsField
 from data.room import Room
 from data.session import Session
 
 
-def handle_data() -> SQLStorageEngine:
+def handle_data(
+    logging: Callable[[str, str], None] = None
+) -> SQLStorageEngine:
     """Connect to the database and bind models."""
     engine = SQLStorageEngine()
-    engine.init("talismud.db")
+    engine.init("talismud.db", logging=logging)
     engine.bind({Account, Character, Delay, Room, Session})
     engine.add_custom_field(ContextsField)
     engine.add_custom_field(DescriptionField)
+    engine.add_custom_field(ExitsField)
     engine.add_custom_field(NamespaceField)
     engine.add_custom_field(PermissionsField)
     return engine

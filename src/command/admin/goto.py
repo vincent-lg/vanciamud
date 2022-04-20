@@ -44,62 +44,82 @@ class Goto(Command):
 
     This command allows to move from room to room with no constraint.
     To move to a room, specify its barcode as argument:
-        goto <barcode>
+      goto <barcode>
     You can associate aliases with some rooms you frequently visit.
     To do so, enter the alias to assign to this room after an equal sign:
-      room =office
+      goto =office
     This will associate the current room where you are with the alias
     'office'.  You can then move back to this room like this:
-        goto office
+      goto office
     (If your alias is an active room barcode, the latter will have
     precedence.  You cannot override barcodes.)
     To see your current aliases, just type `goto` without arguments:
-        goto
+      goto
     If you want to remove an alias, you can specify the alias name
     following a dash:
-        goto -office
+      goto -office
 
     """
 
     args = Command.new_parser()
-    args.add_argument("word", dest="destination", optional=True)
+    group = args.add_group()
+    nothing = group.add_branch("list_aliases")
+    equal_alias = group.add_branch("add_alias")
+    equal_alias.add_argument("symbols", "=")
+    equal_alias.add_argument("word", dest="destination")
+    minus_alias = group.add_branch("del_alias")
+    minus_alias.add_argument("symbols", "-")
+    minus_alias.add_argument("word", dest="destination")
+    destination = group.add_branch("move")
+    destination.add_argument("word", dest="destination")
 
-    def run(self, destination: str = ""):
-        """Command body."""
+    def list_aliases(self):
+        """List the current aliases."""
         aliases = self.db.setdefault("aliases", {})
-        if not destination:
-            if not aliases:
-                self.msg("You don't have any goto alias yet.")
-                return
-
-            max_key = max(len(key) for key in aliases.keys())
-            aliases = sorted(aliases.items())
-            lines = ["Your current goto aliases:"]
-            for key, alias in aliases:
-                lines.append(f"  {key:<{max_key}}: {alias}")
-            self.msg("\n".join(lines))
+        if not aliases:
+            self.msg("You don't have any goto alias yet.")
             return
 
-        # Treat =alias.
-        if destination.startswith("="):
-            destination = destination[1:].strip()
-            if not destination:
-                self.msg("This is an empty alias name.")
-                return
+        max_key = max(len(key) for key in aliases.keys())
+        aliases = sorted(aliases.items())
+        lines = ["Your current goto aliases:"]
+        for key, alias in aliases:
+            lines.append(f"  {key:<{max_key}}: {alias}")
+        self.msg("\n".join(lines))
 
-            room = self.character.room
-            if room is None:
-                self.msg("You aren't in any room yet.")
-                return
+    def add_alias(self, destination: str):
+        """Add an alias."""
+        aliases = self.db.setdefault("aliases", {})
+        room = self.character.room
+        if room is None:
+            self.msg("You aren't in any room yet.")
+            return
 
-            aliases[destination.lower()] = room.barcode
-            self.db.aliases = aliases
+        aliases[destination.lower()] = room.barcode
+        self.db.aliases = aliases
+        self.msg(
+            f"You've succesfully created the alias {destination} "
+            f"pointing to {room.barcode}."
+        )
+
+    def del_alias(self, destination: str):
+        """Remove an alias."""
+        aliases = self.db.setdefault("aliases", {})
+        if aliases.pop(destination.lower(), None) is None:
             self.msg(
-                f"You've succesfully created the alias {destination} "
-                f"pointing to {room.barcode}."
+                f"This goto alias {destination} isn't defined "
+                "for your character."
             )
             return
 
+        self.db.aliases = aliases
+        self.msg(
+            f"You've removed the goto alias {destination}."
+        )
+
+    def move(self, destination):
+        """Command body."""
+        aliases = self.db.setdefault("aliases", {})
         room = None
 
         # First, test room barcodes.
@@ -112,7 +132,7 @@ class Goto(Command):
                 room = Room.repository.get(barcode=barcode)
                 if room is None:
                     self.msg(
-                        f"The alias {destination} is linked to room "
+                        f"The goto alias {destination} is linked to room "
                         f"of barcode {barcode}, but this room "
                         "cannot be found."
                     )

@@ -43,6 +43,9 @@ class Result:
     def portion(self):
         return self.string[self.begin : self.end]
 
+    def __repr__(self):
+        return f"<Result {self.portion!r}>"
+
 
 class DefaultResult:
 

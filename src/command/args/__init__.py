@@ -35,6 +35,7 @@ from command.args.keyword import Keyword  # noqa: F401
 from command.args.options import Options  # noqa: F401
 from command.args.namespace import Namespace  # noqa: F401
 from command.args.number import Number  # noqa: F401
+from command.args.symbols import Symbols  # noqa: F401
 from command.args.text import Text  # noqa: F401
 from command.args.search import Search  # noqa: F401
 from command.args.word import Word  # noqa: F401

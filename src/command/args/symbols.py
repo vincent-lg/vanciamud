@@ -27,74 +27,43 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Argument branch."""
+"""Symbols argument.
+
+This argument consists of one or more characters as delimiters.
+
+"""
 
 from typing import Any, Optional, Union, TYPE_CHECKING
 
-from command.args.base import ARG_TYPES
+from command.args.base import ArgSpace, Argument
 from command.args.error import ArgumentError
-from command.args.namespace import Namespace
 from command.args.result import Result
 
 if TYPE_CHECKING:
     from data.character import Character
 
-NOT_SET = object()
 
+class Symbols(Argument):
 
-class Branch:
+    """Symbols class for argument."""
 
-    """Argument branch, a suite of arguments.
+    name = "symbols"
+    space = ArgSpace.STRICT
+    in_namespace = False
 
-    A branch should be checked in sequence to be valid.  However, some
-    arguments in a branch can be optional.
-
-    """
-
-    def __init__(self, group, method_name: str, optional: bool = False):
-        from command.args.args import CommandArgs
-
-        self.optional = optional
-        self.arguments = []
-        self._args = CommandArgs()
-        self.group = group
-        self.method_name = method_name
-
-    def __repr__(self):
-        return f"<ArgBranch: {self._args.arguments}>"
-
-    def add_argument(
+    def __init__(
         self,
-        arg_type: str,
-        *args,
-        dest: Optional[str] = None,
+        symbols: str,
         optional: bool = False,
-        default: Any = NOT_SET,
+        default: Optional[Any] = None,
         **kwargs,
     ):
-        """Add a new argument to the parser.
+        super().__init__(optional=optional, default=default, **kwargs)
+        self.symbols = symbols
+        self.msg_absent = "You forgot to specify {symbols}."
 
-        Args:
-            arg_type (str): the argument type.
-            dest (str, optional): the attribute name in the namespace.
-            optional (bool, optional): is this argument optional?
-
-        Additional keyword arguments are sent to the argument class.
-
-        """
-        from command.args.args import _NOT_SET
-
-        default = _NOT_SET if default is NOT_SET else default
-        arg_class = ARG_TYPES.get(arg_type)
-        if arg_class is None:
-            raise KeyError(f"invalid argument type: {arg_type!r}")
-
-        dest = dest or arg_type
-        argument = arg_class(
-            *args, dest=dest, optional=optional, default=default, **kwargs
-        )
-        self._args.arguments.append(argument)
-        return argument
+    def __repr__(self):
+        return "<Symbols>"
 
     def parse(
         self,
@@ -115,12 +84,19 @@ class Branch:
             result (Result or ArgumentError).
 
         """
-        namespace = self._args.parse(character, string, begin, end)
-        if isinstance(namespace, Namespace):
-            result = Result(0, None, "")
-            result.namespace = namespace
-            setattr(result.namespace, "_run_in", self.method_name)
-        else:
-            result = namespace
+        before_pos = string.find(self.symbols, begin)
+        if before_pos != -1:
+            after_pos = before_pos + len(self.symbols)
+            while before_pos > 0 and string[before_pos].isspace():
+                before_pos -= 1
+            if after_pos == -1:
+                after_pos = None
+            else:
+                while (
+                    after_pos < len(string) - 1 and string[after_pos].isspace()
+                ):
+                    after_pos += 1
 
-        return result
+            return Result(begin=before_pos, end=after_pos, string=string)
+
+        return ArgumentError(self.msg_absent.format(symbols=self.symbols))

@@ -241,8 +241,21 @@ class Command:
                 self.msg(str(result))
                 return
 
-            args = self.args_to_dict(result)
-            self.run(**args)
+            method_name = getattr(result, "_run_in", "run")
+            method = getattr(self, method_name, None)
+            if method is None:
+                if self.character and self.character.permissions.has("admin"):
+                    self.msg(
+                        "Cannot access the command's {method_name!r} method."
+                    )
+                else:
+                    self.msg(
+                        "Sorry, this command is not accessible right now."
+                    )
+                return
+
+            args = self.args_to_dict(method, result)
+            method(**args)
         except Exception:
             # If an administrator, sends the traceback directly
             if self.character and self.character.permissions.has("admin"):
@@ -339,7 +352,7 @@ class Command:
         return tuple(values)
 
     @classmethod
-    def args_to_dict(cls, args: Namespace) -> Dict[str, Any]:
+    def args_to_dict(cls, method, args: Namespace) -> Dict[str, Any]:
         """Return a dictionary based on the `run` arguments.
 
         The `run` method can have:
@@ -354,7 +367,7 @@ class Command:
 
         """
         to_dict = {}
-        signature = inspect.signature(cls.run)
+        signature = inspect.signature(method)
         parameters = [
             p for p in signature.parameters.values() if p.name != "self"
         ]
@@ -370,7 +383,8 @@ class Command:
                         raise ValueError(
                             f"{cls}: the command requires the keyword "
                             f"argument {parameter.name!r}, but it's not "
-                            "defined as a command argument and doesn't "
+                            "defined as a command argument in the method "
+                            f"{method.__name__} and doesn't "
                             "have a default value in the method signature"
                         )
 

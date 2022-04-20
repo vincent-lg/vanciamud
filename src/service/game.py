@@ -95,8 +95,7 @@ class Service(BaseService):
         delay._execute()
         loop = asyncio.get_event_loop()
         loop.create_task(self.mudio.send_output(0))
-        loop.create_task(self.mudio.send_portal_commands())
-        self.logger.debug("Scheduled")
+        loop.create_task(self.send_portal_commands())
 
     async def connected_to_CRUX(self, writer):
         """The host is connected to the CRUX server."""

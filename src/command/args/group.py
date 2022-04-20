@@ -57,15 +57,24 @@ class Group:
     space = ArgSpace.UNKNOWN
     in_namespace = True
 
-    def __init__(self, parser, optional=False):
+    def __init__(self, parser, optional=True):
         self.parser = parser
         self.branches = []
         self.optional = optional
-        self.msg_error = "Specify something."
+        self.msg_mandatory = "Specify something."
 
-    def add_branch(self):
-        """Add and return a new branch."""
-        branch = Branch(self)
+    def add_branch(self, method_name: str) -> Branch:
+        """Add and return a new branch.
+
+        Args:
+            method_name (str): the name of the method that will be
+                    run for this branch, on the command object.
+
+        Returns:
+            branch (Branch): the added branch.
+
+        """
+        branch = Branch(self, method_name)
         self.branches.append(branch)
         return branch
 
@@ -98,7 +107,7 @@ class Group:
 
         # If there's more than one success, retrieve the most limited one.
         if len(success) > 1:
-            success = max(success, key=lambda tup: len(tup[0].arguments))[1]
+            success = max(success, key=lambda tup: len(tup[0]._args.arguments))[1]
         elif len(success) == 1:
             success = success[0][1]
 

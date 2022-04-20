@@ -97,8 +97,9 @@ class Namespace(dict):
         return pair
 
     def setdefault(self, key, default=None):
-        super().setdefault(key, default)
+        value = super().setdefault(key, default)
         self.save()
+        return value
 
     def update(self, *args, **kwargs):
         super().update(*args, **kwargs)

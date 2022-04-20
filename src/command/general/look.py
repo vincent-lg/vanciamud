@@ -36,14 +36,12 @@ class Look(Command):
 
     """Look."""
 
+    alias = "l"
+
     def run(self):
         """Run the command."""
         room = self.character.room
         if room:
-            lines = [
-                room.title,
-                room.description.format(),
-            ]
-            self.msg("\n".join(lines))
+            self.msg(room.look(self.character))
         else:
             self.msg("You are floating in the void...")

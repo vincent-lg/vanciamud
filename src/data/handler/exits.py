@@ -30,13 +30,14 @@
 """Exits custom field, to hold room exits."""
 
 import pickle
-from typing import Optional, Set, TYPE_CHECKING
+from typing import Optional, Set, Tuple, TYPE_CHECKING
 
 from pygasus.model import CustomField
 
 from data.exit import Exit, Direction
 
 if TYPE_CHECKING:
+    from data.character import Character
     from data.room import Room
 
 
@@ -56,6 +57,17 @@ class ExitHandler(dict):
 
         return f"[{', '.join(exits)}]"
 
+    @property
+    def linked(self) -> Tuple[Exit]:
+        """Only return linked exits in the direction order."""
+        exits = []
+        for direction in Direction:
+            exit = self.get(direction)
+            if exit:
+                exits.append(exit)
+
+        return tuple(exits)
+
     def get_in(self, direction: Direction) -> Optional[Exit]:
         """Return the exit in this direction or None.
 
@@ -66,6 +78,10 @@ class ExitHandler(dict):
 
         """
         return self.get(direction)
+
+    def get_visible_by(self, character: "Character") -> Tuple[Exit]:
+        """Only return visible exits by this character."""
+        return [exit for exit in self.linked if exit.can_see(character)]
 
     def add(
         self,

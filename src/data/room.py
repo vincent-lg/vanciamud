@@ -54,5 +54,31 @@ class Room(Model):
     db: dict = Field({}, custom_class=NamespaceField)
     characters: List["Character"] = []
 
+    def look(self, character: "Character") -> str:
+        """The character wants to look at this room.
+
+        Args:
+            character (Character): who looks at this room.
+
+        """
+        description = self.description.format()
+        exits = self.exits.get_visible_by(character)
+        if exits:
+            exits = "Obvious exits: " + ", ".join(
+                [exit.get_name_for(character) for exit in exits]
+            )
+        else:
+            exits = "There is no obvious exit."
+
+        lines = [
+            self.title,
+            "",
+            description,
+            "",
+            exits,
+        ]
+
+        return "\n".join(lines)
+
 
 Exit.room = Room

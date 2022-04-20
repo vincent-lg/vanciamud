@@ -40,6 +40,7 @@ from enum import Enum
 from typing import Optional, Set, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from data.character import Character
     from data.room import Room
 
 
@@ -102,6 +103,24 @@ class Exit:
             return
 
         return exit
+
+    def can_see(self, character: "Character") -> bool:
+        """Return whether this exit can be seen by this character.
+
+        Args:
+            character (Character): the character trying to see this exit.
+
+        """
+        return True
+
+    def get_name_for(self, character: "Character") -> str:
+        """Return the exit name for this character.
+
+        Args:
+            character (Character): the character seeing this exit.
+
+        """
+        return self.name
 
 
 class Direction(Enum):

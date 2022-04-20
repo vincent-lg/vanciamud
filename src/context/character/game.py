@@ -64,11 +64,7 @@ class Game(Context):
         """Return the active context's greeting."""
         room = self.character.room
         if room:
-            lines = [
-                room.title,
-                room.description.format(),
-            ]
-            return "\n".join(lines)
+            return room.look(self.character)
 
         return "You are floating in the void..."
 

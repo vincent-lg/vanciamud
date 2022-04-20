@@ -82,18 +82,12 @@ class Exit:
     @property
     def origin(self):
         """Return the origin."""
-        results = Exit.room.repository.select(
-            Exit.room.barcode == self.origin_barcode
-        )
-        return results[0] if results else None
+        return Exit.room.repository.get(barcode=self.origin_barcode)
 
     @property
     def destination(self):
         """Return the destination."""
-        results = Exit.room.repository.select(
-            Exit.room.barcode == self.destination_barcode
-        )
-        return results[0] if results else None
+        return Exit.room.repository.get(barcode=self.destination_barcode)
 
     @property
     def back(self):

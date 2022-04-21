@@ -523,6 +523,10 @@ This tutorial, however long, was an introduction to commands.  Many other topics
 
     TalisMUD relies on another tool, called `table`, to display information in a text-based representation.  Although it doesn't sound that hard to code that yourself, the provided tool handles cell wrapping (if text is too big for a column), coloring (if text contains color codes) and different kinds of border, along with other features.  Read [this tutorial on tables](table.md) for more information.
 
+*   I need to create a command that can support many different syntax.  Is that possible?
+
+    If you want to create a command that can be used in different ways (like `say something` or `say something to X`), you can create [argument branches](command-branches.md).  That's a way to have alternative list of arguments and different `run` methods, which is handy for commands with a complex syntax.
+
 ## Troubleshooting
 
 With flexibility comes some risks: sometimes we work on a command and it's not even added.  Sometimes our command does fail and we don't know why.  This section gives guidance on how to debug in both these situations.

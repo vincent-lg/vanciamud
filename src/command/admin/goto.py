@@ -113,9 +113,7 @@ class Goto(Command):
             return
 
         self.db.aliases = aliases
-        self.msg(
-            f"You've removed the goto alias {destination}."
-        )
+        self.msg(f"You've removed the goto alias {destination}.")
 
     def move(self, destination):
         """Command body."""

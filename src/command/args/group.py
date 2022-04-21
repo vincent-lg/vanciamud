@@ -107,7 +107,9 @@ class Group:
 
         # If there's more than one success, retrieve the most limited one.
         if len(success) > 1:
-            success = max(success, key=lambda tup: len(tup[0]._args.arguments))[1]
+            success = max(
+                success, key=lambda tup: len(tup[0]._args.arguments)
+            )[1]
         elif len(success) == 1:
             success = success[0][1]
 

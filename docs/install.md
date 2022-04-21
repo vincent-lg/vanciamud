@@ -126,3 +126,5 @@ If you have administration privileges on your platform and you don't use it exce
 That will install `talismud` as a system package and you will have the `talismud` command no matter where.  Notice that you still have to `cd` into your `src` game directory.
 
 I would recommend using a virtual environment in production or development.  That might sound like a bit of overhead, but it has a lot of advantages.
+
+Next step: [Learn TalisMUD's basics](basic.md).

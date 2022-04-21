@@ -193,4 +193,4 @@ Again, if the portal can connect, it will tell you.  Otherwise you will see a ni
 
 TalisMUD will try to tell you if an error occurred, in particular, when you restart the game.  But it's not a guarantee of course.
 
-Still stuck?  It might be time to reach out.  Please [contact the project developers](contact.html) and we'll try to help.  And update this page, if that's a question we often get!
+Still stuck?  It might be time to reach out.  Please [contact the project developers](contact.md) and we'll try to help.  And update this page, if that's a question we often get!

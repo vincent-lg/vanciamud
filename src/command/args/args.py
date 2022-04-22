@@ -31,11 +31,11 @@
 
 from typing import Any, Optional, Union, TYPE_CHECKING
 
-from command.args.base import ArgSpace, ARG_TYPES
+from command.args.base import ARG_TYPES
 from command.args.error import ArgumentError
+from command.args.helpers import parse_all
 from command.args.group import Group
 from command.args.namespace import Namespace
-from command.args.result import DefaultResult, Result
 
 if TYPE_CHECKING:
     from data.character import Character
@@ -95,6 +95,7 @@ class CommandArgs:
 
     def __init__(self):
         self.arguments = []
+        self.msg_invalid = "Invalid syntax."
 
     def add_argument(
         self,
@@ -135,7 +136,7 @@ class CommandArgs:
     def parse(
         self,
         character: "Character",
-        arguments: str,
+        string: str,
         begin: int = 0,
         end: Optional[int] = None,
     ) -> Union[Namespace, ArgumentError]:
@@ -146,7 +147,7 @@ class CommandArgs:
 
         Args:
             character (Character): the character running the command.
-            arguments (str): the unparsed arguments as a string.
+            string (str): the unparsed arguments as a string.
             begin (int, opt): the optional parse beginning.
             end (int, opt): the optional parse ending.
 
@@ -154,100 +155,6 @@ class CommandArgs:
             result (`Namespace` or `ArgumentError`): the parsed result.
 
         """
-        results = [None] * len(self.arguments)
-
-        # Parse arguments with definite size
-        attempts = (
-            # Strict arguments
-            [arg for arg in self.arguments if arg.space is ArgSpace.STRICT],
-            # Fixed in length
-            [arg for arg in self.arguments if arg.space is ArgSpace.WORD],
-            # Others
-            tuple(self.arguments),
+        return parse_all(
+            self.arguments, character, string, begin, end, self.msg_invalid
         )
-
-        end = len(arguments) if end is None else end
-        for attempt in attempts:
-            for arg in attempt:
-                i = self.arguments.index(arg)
-                if results[i] is not None:
-                    continue
-
-                # If there's a previous result, parse after it
-                t_begin = begin
-                if i > 0:
-                    prev_results = [
-                        result
-                        for result in results[:i]
-                        if isinstance(result, Result)
-                    ]
-                    if prev_results:
-                        prev_result = prev_results[-1]
-                        t_begin = prev_result.end
-
-                # Skip over spaces
-                while t_begin < len(arguments):
-                    if arguments[t_begin].isspace():
-                        t_begin += 1
-                    else:
-                        break
-
-                # If there's a following result, parse before it
-                t_end = end
-                if i < len(self.arguments) - 1:
-                    next_results = [
-                        result
-                        for result in results[i + 1 :]
-                        if isinstance(result, Result)
-                    ]
-                    if next_results:
-                        next_result = next_results[0]
-                        t_end = next_result.begin
-
-                if t_begin == t_end and not arg.optional:
-                    return ArgumentError(
-                        arg.msg_mandatory.format(argument=arg.name)
-                    )
-
-                result = arg.parse(character, arguments, t_begin, t_end)
-                if isinstance(result, ArgumentError):
-                    if arg.default is not _NOT_SET:
-                        result = DefaultResult(arg.default)
-                results[i] = result
-
-        # If an error has occurred, return the first
-        # mandatory argument error.
-        errors = [
-            result for result in results if isinstance(result, ArgumentError)
-        ]
-        if errors:
-            mandatory = [
-                result
-                for result in errors
-                if not self.arguments[results.index(result)].optional
-            ]
-            if mandatory:
-                return mandatory[0]
-
-            return errors[0]
-
-        # Create the namespace.
-        namespace = Namespace()
-        for arg, result in zip(self.arguments, results):
-            if not arg.in_namespace:
-                continue
-
-            if isinstance(result, DefaultResult):
-                value = result.value
-            elif not isinstance(result, Result):
-                continue
-            else:
-                value = result.portion
-
-            custom = getattr(arg, "add_to_namespace", None)
-            if custom:
-                custom(result, namespace)
-            else:
-                setattr(namespace, arg.dest, value)
-
-        return namespace

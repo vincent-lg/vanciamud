@@ -37,5 +37,9 @@ class ArgumentError:
     def __init__(self, message):
         self.message = message
 
+    def __bool__(self):
+        """An error is always falsy."""
+        return False
+
     def __str__(self):
         return self.message

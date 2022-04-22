@@ -37,6 +37,10 @@ class Namespace:
     def __repr__(self):
         return f"Namespace{self.__dict__}"
 
+    def __bool__(self):
+        """A namespace is always truthy."""
+        return True
+
     def __iter__(self):
         """Iterate over the namespace."""
         return iter(self.__dict__.items())

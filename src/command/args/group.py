@@ -57,11 +57,13 @@ class Group:
     space = ArgSpace.UNKNOWN
     in_namespace = True
 
-    def __init__(self, parser, optional=True):
+    def __init__(self, parser, optional=False):
+        self.name = "group"
         self.parser = parser
         self.branches = []
         self.optional = optional
-        self.msg_mandatory = "Specify something."
+        self.msg_error = "Invalid syntax."
+        self.msg_mandatory = "You have to specify something."
 
     def add_branch(self, method_name: str) -> Branch:
         """Add and return a new branch.

@@ -142,11 +142,8 @@ default_encoding = "utf-8"
 # These settings affect how your builders can work to contribute content
 # to TalisMUD.
 
-# Blueprint parser
-blueprint_parser = "yaml"
-
-# Blueprint directory to store blueprint files
-blueprint_directory = "blueprints"
-
-# Blueprint backup mode
-blueprint_backup = true
+# Auto apply blueprints on startup
+# If set to true, when starting, all blueprints will be applied (the
+# world will be updated).  In production, it might not be a good idea
+# to have this setting on.
+blueprint_auto_apply = true

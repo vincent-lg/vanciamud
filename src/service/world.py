@@ -34,6 +34,8 @@ import operator
 from pathlib import Path
 from typing import Any, Dict, Sequence
 
+from dynaconf import settings
+
 from logbook import FileHandler, Logger
 import yaml
 
@@ -76,7 +78,8 @@ class Service(BaseService):
         self.load_blueprints()
 
         for blueprint in self.blueprints.values():
-            blueprint.apply()
+            if settings.BLUEPRINT_AUTO_APPLY:
+                blueprint.apply()
 
     async def cleanup(self):
         """Clean the service up before shutting down."""

@@ -1,4 +1,24 @@
 [default]
 name = {must_exist=true}
-forbidden_usernames = {must_exist=true}
+version = {must_exist=true}
+game_description = {must_exist=true}
+hash_algorithm = {must_exist=true}
+salt_size = {must_exist=true}
+hash_iterations = {gt=0}
+key_size = {must_exist=true}
+country = {must_exist=true}
+state = {must_exist=true}
+locality = {must_exist=true}
+organization = {must_exist=true}
+public_access = {must_exist=true}
+telnet_port = {gt=0}
+web_port = {gt=0}
+telnet_ssl_port = {gt=0}
 min_account_username = {gt=0}
+forbidden_usernames = {must_exist=true}
+min_account_password = {gt=0}
+min_character_name = {gt=0}
+start_room = {must_exist=true}
+return_room = {must_exist=true}
+default_encoding = {must_exist=true}
+blueprint_auto_apply = {must_exist=true}

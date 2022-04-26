@@ -33,8 +33,12 @@ import asyncio
 from collections import defaultdict
 from importlib import import_module
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional, Sequence, Type, Union
 
+from logbook import Logger
+
+from channel.base import Channel
+from channel.log import logger as chn_logger
 from command.base import Command, COMMANDS
 from command.log import logger as cmd_logger
 from context.base import Context, CONTEXTS
@@ -68,11 +72,13 @@ class Service(BaseService):
         self.output_lock = asyncio.Lock()
         self.contexts = {}
         self.commands = {}
+        self.channels = {}
 
     async def setup(self):
         """Set the MudIO up."""
         self.load_contexts()
         self.load_commands()
+        self.load_channels()
 
     async def cleanup(self):
         """Clean the service up before shutting down."""
@@ -256,6 +262,27 @@ class Service(BaseService):
         COMMANDS.clear()
         COMMANDS.update(self.commands)
 
+    def load_channels(self):
+        """Dynamically load channels."""
+        channels = self.dynamically_load(
+            Channel,
+            chn_logger,
+            parent=Path("channel"),
+            exclude=(Path("channel/log.py"), Path("channel/base.py")),
+        )
+        self.channels.update(channels)
+        s = "s" if len(channels) > 1 else ""
+        was = "were" if len(channels) > 1 else "was"
+        chn_logger.info(
+            f"{len(channels)} channel{s} {was} successfully loaded."
+        )
+        for channel in channels.values():
+            name = getattr(channel, "name", ...)
+            if name is ...:
+                channel.name = channel.__name__.lower()
+
+            channel.service = self
+
     def handle_input(self, session: Session, command: str):
         """Handle input from a session.
 
@@ -301,3 +328,100 @@ class Service(BaseService):
                         input_id=input_id,
                     ),
                 )
+
+    @staticmethod
+    def dynamically_load(
+        base_class: Type[Any],
+        logger: Logger,
+        parent: Union[Path, Sequence[Path]],
+        exclude: Optional[Sequence[Path]] = None,
+    ) -> Dict[str, Any]:
+        """Dynamically load any objects from modules.
+
+        Args:
+            base_class (type): any class.
+            logger (Logger): the logger to indicate errors.
+            parent (Path or sequence of Path): the parent(s).
+            exclude (Sequence of Path, optional): the path to exclude.
+
+        Returns:
+            loaded (dict): the loaded classes.
+
+        In each parent, all the Python modules will be searched recurisvely
+        and loaded.  Inside these files, the one class inheriting
+        from the base class will be loaded and returned.  If more
+        than one class from this base class is defined in this file,
+        log an error.
+
+        """
+        paths = (parent,) if isinstance(parent, Path) else parent
+        exclude = exclude or ()
+
+        # Search the module files.
+        logger.debug("Preparing to load all module files...")
+        loaded = {}
+        for path in paths:
+            for file_path in path.rglob("*.py"):
+                if file_path in exclude or any(
+                    to_ex in file_path.parents for to_ex in exclude
+                ):
+                    continue
+
+                # Search for the module to begin.
+                if file_path.name.startswith("_"):
+                    continue
+
+                # Assume this is a module containing ONE class <- base_class.
+                relative = file_path.relative_to(path)
+                pypath = ".".join(file_path.parts)[:-3]
+                py_unique = ".".join(relative.parts)[:-3]
+
+                # Try to import it.
+                try:
+                    module = import_module(pypath)
+                except Exception:
+                    logger.exception(
+                        f"  An error occurred when importing {pypath}:"
+                    )
+                    continue
+
+                # Explore the module to try to import ONE class.
+                subclass = None
+                for name, value in module.__dict__.items():
+                    if name.startswith("_"):
+                        continue
+
+                    if (
+                        isinstance(value, type)
+                        and value is not base_class
+                        and issubclass(value, base_class)
+                    ):
+                        if value.__module__ != pypath:
+                            continue
+
+                        if subclass is not None:
+                            subclass = ...
+                            break
+                        else:
+                            subclass = value
+
+                if subclass is None:
+                    logger.warning(
+                        f"No class inheriting from {base_class.__name__!r} "
+                        f"could be found in {pypath}."
+                    )
+                    continue
+                elif subclass is ...:
+                    logger.warning(
+                        "More than one class inheriting from "
+                        f"{base_class.__name__!r} are present "
+                        f"in module {pypath}, not loading any."
+                    )
+                    continue
+                else:
+                    logger.debug(
+                        f"  Load the class in {pypath} (name={py_unique!r})"
+                    )
+                    loaded[py_unique] = subclass
+
+        return loaded

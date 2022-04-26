@@ -73,6 +73,15 @@ class Service(BaseService):
         self.host.schedule_hook("connected", self.connected_to_CRUX)
         self.data.setup_shell(self.console)
 
+        # Add all services to the Shell.
+        services = Queue()
+        services.put_nowait(self)
+        while not services.empty():
+            service = services.get_nowait()
+            self.console.locals[service.name.lower()] = service
+            for sub_service in service.services.values():
+                services.put_nowait(sub_service)
+
     async def cleanup(self):
         """Clean the service up before shutting down."""
 

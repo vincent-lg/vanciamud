@@ -281,7 +281,7 @@ class Service(BaseService):
             if name is ...:
                 channel.name = channel.__name__.lower()
 
-            channel.service = self
+        Channel.service = self
 
     def handle_input(self, session: Session, command: str):
         """Handle input from a session.

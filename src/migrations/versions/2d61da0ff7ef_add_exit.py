@@ -32,10 +32,6 @@ def upgrade():
     # Add an empty dictionary as value for existing rows.
     op.execute(ROOM_TABLE.update().values({"exits": pickle.dumps({})}))
 
-    # Set the column to be not nullable, now that all orws have a vlue.
-    with op.batch_alter_table("room", schema=None) as batch_op:
-        batch_op.alter_column("exits", nullable=False)
-
 
 def downgrade():
     """Remove the exit field to rooms."""

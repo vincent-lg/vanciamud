@@ -71,6 +71,11 @@ sub_migrate = subparsers.add_parser(
     "migrate", help="create or bring to date the database"
 )
 sub_migrate.set_defaults(action="migrate")
+sub_migration = subparsers.add_parser(
+    "migration", help="create a new migration file"
+)
+sub_migration.set_defaults(action="migration")
+sub_migration.add_argument("message", help="the migration message")
 
 
 class Launcher(Process):

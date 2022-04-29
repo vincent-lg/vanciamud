@@ -465,3 +465,11 @@ class Service(BaseService):
         else:
             # Create the database file.
             AlembicCommandLine("alembic").main(["stamp", "head"])
+
+    async def action_migration(self, args: argparse.ArgumentParser):
+        """Create a migration file."""
+        message = args.message
+        message = message.replace(" ", "_")
+        AlembicCommandLine("alembic").main(
+            ["revision", "--autogenerate", "-m", message]
+        )

@@ -37,7 +37,12 @@ can also be altered.
 
 """
 
+from typing import Sequence, Union, TYPE_CHECKING
+
 from service.base import BaseService
+
+if TYPE_CHECKING:
+    from data.character import Character
 
 
 class Channel:
@@ -52,5 +57,21 @@ class Channel:
 
     """
 
-    # Don't replace this:
+    alias: Union[str, Sequence[str]] = ()
+    permissions: str = ""
+
+    # Don't replace this attribute:
     service: BaseService
+
+    @classmethod
+    def can_access(cls, character: "Character") -> bool:
+        """Return whether this character can access this channel.
+
+        Args:
+            character (Character): the character accessing this channel.
+
+        """
+        if cls.permissions:
+            return character.permissions.has(cls.permissions)
+
+        return True

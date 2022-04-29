@@ -33,6 +33,7 @@ from typing import Optional, Union, TYPE_CHECKING
 
 from pygasus import Field, Model
 
+from data.handler.channels import ChannelsField
 from data.handler.contexts import ContextsField
 from data.handler.namespace import NamespaceField
 from data.handler.permissions import PermissionsField
@@ -54,6 +55,7 @@ class Character(Model):
     permissions: set = Field(
         default_factory=set, custom_class=PermissionsField
     )
+    channels: set = Field(default_factory=set, custom_class=ChannelsField)
     room: Optional["Room"] = Field(None, owner=True)
     account: Optional["Account"] = Field(None, owner=True)
     session: Optional["Session"] = Field(None, owner=True)

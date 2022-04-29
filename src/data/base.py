@@ -36,6 +36,7 @@ from pygasus.storage import SQLStorageEngine
 from data.account import Account
 from data.character import Character
 from data.delay import Delay
+from data.handler.channels import ChannelsField
 from data.handler.contexts import ContextsField
 from data.handler.description import DescriptionField
 from data.handler.exits import ExitsField
@@ -52,6 +53,7 @@ def handle_data(
     engine = SQLStorageEngine()
     engine.init("talismud.db", logging=logging)
     engine.bind({Account, Character, Delay, Room, Session})
+    engine.add_custom_field(ChannelsField)
     engine.add_custom_field(ContextsField)
     engine.add_custom_field(DescriptionField)
     engine.add_custom_field(ExitsField)

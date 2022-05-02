@@ -41,12 +41,12 @@ from pygasus.model.decorators import lazy_property
 from command.args import ArgumentError, CommandArgs, Namespace
 from command.log import logger
 from command.namespace import ProxyNamespace
+from service.base import BaseService
 from tools.delay import Delay
 
 if TYPE_CHECKING:
     from data.character import Character
 
-COMMANDS = {}
 _NOT_SET = object()
 
 
@@ -144,6 +144,10 @@ class Command:
     args = CommandArgs()
     seps = " "
     alias = ()
+    in_help = True
+
+    # Do not override this.
+    service: BaseService
 
     def __init__(self, character=None, sep=None, arguments=""):
         self.character = character

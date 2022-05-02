@@ -160,7 +160,7 @@ class ChannelsField(CustomField):
             It must be of the same type as returned by `add`.
 
         """
-        return " ".join(value)
+        return f" {' '.join(value)} "
 
     def to_field(self, value: str):
         """Convert the stored value to the field value.
@@ -175,7 +175,7 @@ class ChannelsField(CustomField):
 
         """
         if value:
-            channels = value.split(" ")
+            channels = [name for name in value.split(" ") if name]
         else:
             channels = set()
 

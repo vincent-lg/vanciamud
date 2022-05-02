@@ -30,7 +30,6 @@
 from collections import defaultdict
 
 from command import Command
-from command.base import COMMANDS
 from tools.list import ListView
 
 
@@ -54,11 +53,16 @@ class Help(Command):
 
     def run(self, name):
         """Run the command."""
-        commands = {command.name: command for command in COMMANDS.values()}
+        commands = Command.service.commands
+        commands = {
+            command.name: command
+            for command in commands.values()
+            if command.in_help
+        }
         if character := self.character:
             commands = {
-                name: command
-                for name, command in commands.items()
+                cmd_name: command
+                for cmd_name, command in commands.items()
                 if command.can_run(character)
             }
 

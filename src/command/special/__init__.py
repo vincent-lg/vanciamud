@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2022 LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,14 +27,4 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-"""OOC channel."""
-
-from channel.base import Channel
-
-
-class OOC(Channel):
-
-    """OOC channel."""
-
-    description: str = "Chat with all other players oocly"
+"""Special commands, for special use cases."""

@@ -31,7 +31,7 @@
 
 from typing import Any, Optional, Union, TYPE_CHECKING
 
-from command.args.base import ARG_TYPES
+from command.args.base import ARG_TYPES, Argument
 from command.args.error import ArgumentError
 from command.args.helpers import parse_all
 from command.args.group import Group
@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from data.character import Character
 
 _NOT_SET = object()
+Argument._NOT_SET = _NOT_SET
 
 
 class CommandArgs:

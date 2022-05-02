@@ -67,11 +67,18 @@ class Argument(metaclass=ArgMeta):
     space = ArgSpace.UNKNOWN
     in_namespace = True
 
+    # To not override.
+    _NOT_SET = None
+
     def __init__(self, dest, optional=False, default=None, **kwargs):
         self.dest = dest
         self.optional = optional
         self.default = default
         self.msg_mandatory = "You should specify a {argument}."
+
+    @property
+    def has_default(self):
+        return self.default is not self._NOT_SET
 
     def __repr__(self):
         return f"<Arg {self.name}>"

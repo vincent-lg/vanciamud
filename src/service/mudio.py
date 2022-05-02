@@ -39,7 +39,7 @@ from logbook import Logger
 
 from channel.base import Channel
 from channel.log import logger as chn_logger
-from command.base import Command, COMMANDS
+from command.base import Command
 from command.log import logger as cmd_logger
 from context.base import Context, CONTEXTS
 from context.log import logger as ctx_logger
@@ -177,90 +177,29 @@ class Service(BaseService):
         This method is called when the game starts.
 
         """
-        parent = Path()
-        paths = (parent / "command",)
-
-        exclude = (
-            parent / "command" / "args",
-            parent / "command" / "base.py",
-            parent / "command" / "log.py",
-            parent / "command" / "namespace.py",
+        commands = self.dynamically_load(
+            Command,
+            cmd_logger,
+            parent=Path("command"),
+            exclude=(
+                Path("command/args"),
+                Path("command/base.py"),
+                Path("command/log.py"),
+                Path("command/namespace.py"),
+                Path("command/special"),
+            ),
         )
-        forbidden = (Command,)
+        self.commands.update(commands)
+        s = "s" if len(commands) > 1 else ""
+        was = "were" if len(commands) > 1 else "was"
+        cmd_logger.info(
+            f"{len(commands)} command{s} {was} successfully loaded."
+        )
+        for path, command in commands.items():
+            command.pyname = path
+            command.extrapolate(command.file_path)
 
-        # Search the command files.
-        cmd_logger.debug("Preparing to load all commands...")
-        loaded = 0
-        for path in paths:
-            for file_path in path.rglob("*.py"):
-                if file_path in exclude or any(
-                    to_ex in file_path.parents for to_ex in exclude
-                ):
-                    continue
-
-                # Search for the module to begin.
-                if file_path.name.startswith("_"):
-                    continue
-
-                # Assume this is a module containing ONE command.
-                relative = file_path.relative_to(path)
-                pypath = ".".join(file_path.parts)[:-3]
-                py_unique = ".".join(relative.parts)[:-3]
-
-                # Try to import it.
-                try:
-                    module = import_module(pypath)
-                except Exception:
-                    cmd_logger.exception(
-                        f"  An error occurred when importing {pypath}:"
-                    )
-                    continue
-
-                # Explore the module to try to import ONE command.
-                NewCommand = None
-                for name, value in module.__dict__.items():
-                    if name.startswith("_"):
-                        continue
-
-                    if (
-                        isinstance(value, type)
-                        and value not in forbidden
-                        and issubclass(value, Command)
-                    ):
-                        if value.__module__ != pypath:
-                            continue
-
-                        if NewCommand is not None:
-                            NewCommand = ...
-                            break
-                        else:
-                            NewCommand = value
-
-                if NewCommand is None:
-                    cmd_logger.warning(
-                        f"No command could be found in {pypath}."
-                    )
-                    continue
-                elif NewCommand is ...:
-                    cmd_logger.warning(
-                        "More than one command are present "
-                        f"in module {pypath}, not loading any."
-                    )
-                    continue
-                else:
-                    loaded += 1
-                    cmd_logger.debug(
-                        f"  Load the command in {pypath} (name={py_unique!r})"
-                    )
-                    self.commands[py_unique] = NewCommand
-                    NewCommand.pyname = py_unique
-                    NewCommand.extrapolate(file_path)
-
-        s = "s" if loaded > 1 else ""
-        was = "were" if loaded > 1 else "was"
-        cmd_logger.debug(f"{loaded} command{s} {was} loaded successfully.")
-        COMMANDS.clear()
-        COMMANDS.update(self.commands)
+        Command.service = self
 
     def load_channels(self):
         """Dynamically load channels."""
@@ -280,6 +219,7 @@ class Service(BaseService):
             name = getattr(channel, "name", ...)
             if name is ...:
                 channel.name = channel.__name__.lower()
+            channel.create_commands()
 
         Channel.service = self
 
@@ -423,5 +363,6 @@ class Service(BaseService):
                         f"  Load the class in {pypath} (name={py_unique!r})"
                     )
                     loaded[py_unique] = subclass
+                    subclass.file_path = file_path
 
         return loaded

@@ -48,7 +48,7 @@ Note:
 
 """
 
-from command.base import COMMANDS
+from command.base import Command
 from context.base import Context
 
 
@@ -71,7 +71,8 @@ class Game(Context):
     def handle_input(self, user_input: str):
         """Route the user input to the context stack."""
         character = self.session.character
-        seps = {sep: () for comm in COMMANDS.values() for sep in comm.seps}
+        commands = Command.service.commands
+        seps = {sep: () for comm in commands.values() for sep in comm.seps}
         for sep in seps.keys():
             try:
                 before, after = user_input.split(sep, 1)
@@ -81,7 +82,7 @@ class Game(Context):
 
             seps[sep] = (before, after)
 
-        for command_cls in COMMANDS.values():
+        for command_cls in commands.values():
             aliases = command_cls.alias
             if isinstance(aliases, str):
                 aliases = (aliases,)

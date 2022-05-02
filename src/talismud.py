@@ -35,7 +35,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path().absolute()))
-loop = asyncio.get_event_loop()
+loop = asyncio.new_event_loop()
 Launcher = import_module("process.launcher").Launcher
 launcher = Launcher()
 task = loop.create_task(launcher.start())

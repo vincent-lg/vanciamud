@@ -227,7 +227,7 @@ class Service(BaseService):
     ):
         """Restart the game."""
         self.logger.debug("Asked to restart the game...")
-        if announce:
+        if announce and self.game_id:
             # Announce to all contected clients
             telnet = self.services["telnet"]
             for session_id in telnet.sessions.keys():

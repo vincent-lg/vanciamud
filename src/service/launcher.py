@@ -32,7 +32,7 @@
 import argparse
 from enum import Enum, Flag, auto
 from pathlib import Path
-import sys
+import time
 from uuid import UUID
 
 from alembic.config import CommandLine as AlembicCommandLine
@@ -62,6 +62,7 @@ class MUDStatus(Enum):
     OFFLINE = 0
     PORTAL_ONLINE = 1
     ALL_ONLINE = 2
+    GAME_ERROR = 3
 
 
 class Service(BaseService):
@@ -155,7 +156,7 @@ class Service(BaseService):
     async def handle_cannot_start_game(self, reader, error):
         """Cannot start the game."""
         self.logger.error(error)
-        sys.exit(1)
+        self.status = MUDStatus.GAME_ERROR
 
     # User actions
     async def action_start(self, args: argparse.ArgumentParser) -> bool:
@@ -223,15 +224,34 @@ class Service(BaseService):
             self.status = MUDStatus.PORTAL_ONLINE
             self.logger.info("The portal is already running.")
 
+            # Make sure the game needs to be started.
+            result = await host.wait_for_answer(
+                host.writer, "what_game_id", timeout=2
+            )
+            game_id = result.get("game_id")
+            if game_id:
+                self.logger.info(
+                    "The game is also running, no need to start it."
+                )
+                return
+
         # 4. Start the game process.
         self.logger.info("Starting the game ...")
         await host.send_cmd(host.writer, "start_game")
 
         # 5. The game process will send a 'register_game' command to CRUX.
         # 6. ... so wait for the 'registered_game' command to be received.
-        success, result = await host.wait_for_cmd(
-            host.reader, "registered_game", timeout=10
-        )
+        begin = time.time()
+        while time.time() - begin < 10:
+            success, result = await host.wait_for_cmd(
+                host.reader, "registered_game", timeout=0.5
+            )
+            if self.status is MUDStatus.GAME_ERROR:
+                return
+
+            if success:
+                break
+
         if success:
             self.operations = MUDOp.PORTAL_ONLINE | MUDOp.GAME_ONLINE
             self.status = MUDStatus.ALL_ONLINE
@@ -365,9 +385,17 @@ class Service(BaseService):
         self.logger.info("Start game ...")
         # 6. The game process will send a 'register_game' command to CRUX.
         # 7. ... so wait for the 'registered_game' command to be received.
-        success, result = await host.wait_for_cmd(
-            host.reader, "registered_game", timeout=10
-        )
+        begin = time.time()
+        while time.time() - begin < 10:
+            success, result = await host.wait_for_cmd(
+                host.reader, "registered_game", timeout=0.5
+            )
+            if self.status is MUDStatus.GAME_ERROR:
+                return
+
+            if success:
+                break
+
         if success:
             self.operations = MUDOp.PORTAL_ONLINE | MUDOp.GAME_ONLINE
             self.status = MUDStatus.ALL_ONLINE

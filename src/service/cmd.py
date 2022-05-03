@@ -190,6 +190,7 @@ class CmdMixin:
                 return
             except asyncio.IncompleteReadError:
                 # An EOF occurred, disconnect.
+                await self.call_hook("error_read", reader)
                 await queue.put(None)
                 return
             except Exception:
@@ -445,6 +446,8 @@ class CmdMixin:
 
                     if cmd_name == "*" or received[0] == cmd_name:
                         return (True, received[2])
+
+                return (False, {})
         except (asyncio.CancelledError, asyncio.TimeoutError):
             return (False, {})
         except Exception:

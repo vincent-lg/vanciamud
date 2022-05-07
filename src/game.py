@@ -29,22 +29,21 @@
 
 """Start the game in the current process."""
 
-import asyncio
 from importlib import import_module
+import os
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path().absolute()))
-loop = asyncio.get_event_loop()
-Game = import_module("process.game").Game
-process = Game()
-game = Game()
-task = loop.create_task(game.start())
-try:
-    loop.run_until_complete(task)
-except asyncio.CancelledError:
-    pass
-except KeyboardInterrupt:
-    game.should_stop.set()
-finally:
-    loop.run_until_complete(game.stop())
+os.chdir(Path(__file__).parent)
+
+
+def run():
+    """Run the process synchronously."""
+    Game = import_module("process.game").Game
+    game = Game()
+    game.run()
+
+
+if __name__ == "__main__":
+    run()

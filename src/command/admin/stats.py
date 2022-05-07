@@ -27,35 +27,51 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Check the password, step in account connection."""
+from beautifultable import BeautifulTable
 
-from context.base import Context
+from command import Command
+from data.session import Session
 
 
-class Password(Context):
+class Stats(Command):
 
-    """Context displayed when the user has entered the account's password.
+    """Display statistics.
 
-    Input:
-        <password>: the password to connect.
-        /: slash, go back to connection.home.
+    Usage:
+        stats
 
     """
 
-    hide_input = True
-    prompt = "Your account's password:"
-    text = """
-        Account's password.
+    alias = "stat"
 
-        You now need to enter the password for this account.
-    """
+    def run(self):
+        """Run the command."""
+        stats = Command.service.stats
+        table = BeautifulTable()
+        table.columns.header = ("Origin", "Command", "Time")
+        table.columns.header.alignment = BeautifulTable.ALIGN_LEFT
+        table.columns.alignment["Origin"] = BeautifulTable.ALIGN_LEFT
+        table.columns.alignment["Command"] = BeautifulTable.ALIGN_LEFT
+        table.columns.alignment["Time"] = BeautifulTable.ALIGN_RIGHT
+        table.set_style(BeautifulTable.STYLE_DEFAULT)
+        table.rows.separator = ""
 
-    def other_input(self, password: str):
-        """The user entered something else."""
-        account = self.session.db.account
-        hashed_password = account.hashed_password
-        if not account.test_password(hashed_password, password):
-            self.msg("Incorrect password.")
-            return
+        for uuid, command, elapsed in stats:
+            session = Session.repository.get(uuid=uuid)
+            if session is None:
+                origin = "[DISCONNECTED]"
+            elif character := session.character:
+                origin = character.name
+            elif account := session.db.get("account"):
+                origin = f"({account.username})"
+            else:
+                origin = session.uuid.hex
+                origin = f"{origin[:10]}..."
 
-        self.move("character.choice")
+            if " " in command:
+                command, _ = command.split(" ", 1)
+
+            elapsed = round(elapsed, 4)
+            table.rows.append((origin, command, elapsed))
+
+        self.msg(str(table))

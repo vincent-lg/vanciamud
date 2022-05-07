@@ -43,6 +43,7 @@ class ConfirmPassword(Context):
 
     """
 
+    hide_input = True
     prompt = "The password you just entered:"
     text = """
         Confirm your password.

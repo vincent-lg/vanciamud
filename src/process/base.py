@@ -235,3 +235,19 @@ class Process(metaclass=ABCMeta):
         )
 
         return process
+
+    def run(self):
+        """Run the process in a synchronous loop."""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        task = loop.create_task(self.start())
+        try:
+            loop.run_until_complete(task)
+        except asyncio.CancelledError:
+            pass
+        except KeyboardInterrupt:
+            print("ki")
+            self.should_stop.set()
+        finally:
+            loop.run_until_complete(self.stop())

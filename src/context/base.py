@@ -144,6 +144,7 @@ class Context:
     inputs = {
         "": "press_return",
     }
+    hide_input = False
 
     def __init__(self, session, options=None):
         self.session = session

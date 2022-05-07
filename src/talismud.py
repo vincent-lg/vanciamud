@@ -29,25 +29,21 @@
 
 """Start the launcher in the current process."""
 
-import asyncio
 from importlib import import_module
+import os
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path().absolute()))
-loop = asyncio.new_event_loop()
-Launcher = import_module("process.launcher").Launcher
-launcher = Launcher()
-task = loop.create_task(launcher.start())
-try:
-    loop.run_until_complete(task)
-except asyncio.CancelledError:
-    pass
-except KeyboardInterrupt:
-    launcher.should_stop.set()
-finally:
-    loop.run_until_complete(launcher.stop())
+os.chdir(Path(__file__).parent)
 
 
 def run():
-    """Do nothing."""
+    """Run the process synchronously."""
+    Launcher = import_module("process.launcher").Launcher
+    launcher = Launcher()
+    launcher.run()
+
+
+if __name__ == "__main__":
+    run()

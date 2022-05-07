@@ -346,21 +346,16 @@ class Service(CmdMixin, BaseService):
         writer = self.parent.game_writer
         if writer:
             input_id = next(self.input_id)
-            answer = await self.CRUX.wait_for_answer(
+            await self.CRUX.send_cmd(
                 writer,
                 "input",
                 dict(
                     session_id=session.uuid,
                     command=command,
                     input_id=input_id,
+                    sent=sent,
                 ),
             )
-
-            # Answer should contain the time it took to receive this.
-            received = answer.get("received")
-            if received:
-                elapsed = (received - sent).total_seconds()
-                self.record_stat(session.uuid, input_id, command, elapsed)
 
     async def write_to(self, session_id: UUID, message: Union[str, bytes]):
         """Send a message to this session.
@@ -394,27 +389,6 @@ class Service(CmdMixin, BaseService):
             except ConnectionError:
                 await self.error_read(session)
                 return
-
-    def record_stat(
-        self, session_id: UUID, input_id: int, command: bytes, elapsed: float
-    ):
-        """Record this statistic line, if greater than the Nth line.
-
-        Args:
-            session_id (UUID): the session ID of the input.
-            input_id (int): the ID associated with this input.
-            command (bytes): the command itself.
-            elapsed (float): the number of seconds elapsed.
-
-        """
-        for i, (*_, stat_elapsed) in enumerate(self.stats):
-            if stat_elapsed < elapsed:
-                self.stats.insert(i, (session_id, input_id, command, elapsed))
-                break
-
-        if len(self.stats) < 5:
-            self.stats.append((session_id, input_id, command, elapsed))
-        self.stats = self.stats[:5]
 
 
 @dataclass(frozen=True)

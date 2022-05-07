@@ -31,6 +31,7 @@
 
 import asyncio
 from collections import defaultdict
+from datetime import datetime
 from importlib import import_module
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Type, Union
@@ -73,6 +74,7 @@ class Service(BaseService):
         self.contexts = {}
         self.commands = {}
         self.channels = {}
+        self.stats = []
 
     async def setup(self):
         """Set the MudIO up."""
@@ -82,6 +84,34 @@ class Service(BaseService):
 
     async def cleanup(self):
         """Clean the service up before shutting down."""
+
+    def record_stat(
+        self,
+        session: Session,
+        command: str,
+        sent: datetime,
+        received: datetime,
+        executed: datetime,
+    ):
+        """Record this statistic line, if greater than the Nth line.
+
+        Args:
+            session_id (UUID): the session ID of the input.
+            input_id (int): the ID associated with this input.
+            command (bytes): the command itself.
+            sent (datetime): when this command was sent to the game.
+            received (datetime): when this command was received by the game.
+            executed (datetime): when this command was executed by the game.
+
+        """
+        elapsed = (executed - sent).total_seconds()
+        for i, (*_, stat_elapsed) in enumerate(self.stats):
+            if stat_elapsed < elapsed:
+                self.stats.insert(i, (session.uuid, command, elapsed))
+                break
+        else:
+            self.stats.append((session.uuid, command, elapsed))
+        self.stats = self.stats[:5]
 
     def load_contexts(self):
         """Load the contexts dynamically.
@@ -223,7 +253,7 @@ class Service(BaseService):
 
         Channel.service = self
 
-    def handle_input(self, session: Session, command: str):
+    def handle_input(self, session: Session, command: str, sent: datetime):
         """Handle input from a session.
 
         Args:
@@ -231,8 +261,14 @@ class Service(BaseService):
             command (str): the sent command as a string.
 
         """
+        received = datetime.utcnow()
         context = session.context
         context.handle_input(command)
+        if context.hide_input:
+            command = "*" * 8
+
+        executed = datetime.utcnow()
+        self.record_stat(session, command, sent, received, executed)
 
     async def send_output(self, input_id: Optional[int] = None):
         """Send output synchronously."""

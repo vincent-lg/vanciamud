@@ -45,6 +45,7 @@ class Password(Context):
 
     """
 
+    hide_input = True
     prompt = "Your new account's password:"
     text = """
         Secure your account with a password.

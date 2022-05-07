@@ -29,22 +29,21 @@
 
 """Start the portal in the current process."""
 
-import asyncio
 from importlib import import_module
+import os
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path().absolute()))
-loop = asyncio.get_event_loop()
-Portal = import_module("process.portal").Portal
-process = Portal()
-portal = Portal()
-task = loop.create_task(portal.start())
-try:
-    loop.run_until_complete(task)
-except asyncio.CancelledError:
-    pass
-except KeyboardInterrupt:
-    portal.should_stop.set()
-finally:
-    loop.run_until_complete(portal.stop())
+os.chdir(Path(__file__).parent)
+
+
+def run():
+    """Run the process synchronously."""
+    Portal = import_module("process.portal").Portal
+    portal = Portal()
+    portal.run()
+
+
+if __name__ == "__main__":
+    run()

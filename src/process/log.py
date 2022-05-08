@@ -31,21 +31,18 @@
 
 import sys
 
-from logbook import Logger, StreamHandler
-
-stream = StreamHandler(sys.stdout, level="DEBUG", bubble=True)
-stream.format_string = "{record.message}"
+from loguru import logger
 
 
-class ProcessLogger(Logger):
+def name_filter(name):
+    """Filter by record name."""
 
-    """Specific logger to work on a given process."""
+    def filter(record):
+        return record["extra"].get("name") == name
 
-    def __init__(self, process):
-        name = f"process.{process.name}"
-        super().__init__(name)
-        self.process = process
+    return filter
 
-    def process_record(self, record):
-        super().process_record(record)
-        record.extra["process"] = self.process.name
+
+# Add a STDOUT general handler for INFO (and beyond).
+logger.remove()
+logger.add(sys.stdout, level="INFO", format="{message}")

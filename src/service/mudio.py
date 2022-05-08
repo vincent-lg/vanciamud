@@ -36,7 +36,7 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Type, Union
 
-from logbook import Logger
+from loguru._logger import Logger
 
 from channel.base import Channel
 from channel.log import logger as chn_logger

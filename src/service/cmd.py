@@ -148,12 +148,20 @@ class CmdMixin:
         """Set the communication up."""
         self.read_secret_key()
 
-    def read_secret_key(self):
-        """Read the secret key from keyring."""
-        if self.secret_key:
+    def read_secret_key(self, override: bool = False):
+        """Read the secret key from keyring.
+
+        Args:
+            override (bool): if set to True, don't check whether
+                    a secret key exists.
+
+        """
+        if not override and self.secret_key:
             return
 
-        self.logger.debug("Fetching the secret key...")
+        self.logger.debug(
+            self.indented("Fetching the secret key...", added_depth=1)
+        )
         if platform.system() == "Linux":
             if os.path.exists(".crux"):
                 with open(".crux", "r", encoding="utf-8") as file:
@@ -162,7 +170,12 @@ class CmdMixin:
             self.secret_key = keyring.get_password("talismud", "CRUX")
 
         if not self.secret_key:
-            self.logger.debug("The secret key couldn't be loaded.")
+            self.logger.debug(
+                self.indented(
+                    "The secret key couldn't be loaded.",
+                    added_depth=1,
+                ),
+            )
             return
 
         MessageMode.setup(self.secret_key, ...)

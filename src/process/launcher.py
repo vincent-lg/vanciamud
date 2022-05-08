@@ -92,7 +92,6 @@ class Launcher(Process):
 
     def __init__(self):
         super().__init__()
-        self.stream_handler.format_string = "{record.message}"
         self.window_task = None
 
     async def setup(self):

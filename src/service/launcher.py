@@ -214,7 +214,7 @@ class Service(BaseService):
                 return False
 
             # The portal has started.
-            host.read_secret_key()
+            host.read_secret_key(override=True)
             self.operations = MUDOp.STARTING | MUDOp.PORTAL_ONLINE
             self.operations |= MUDOp.PORTAL_ONLINE
             self.logger.info("... portal started.")

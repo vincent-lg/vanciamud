@@ -56,20 +56,19 @@ from itertools import count
 import pickle
 from typing import Any, Callable, Dict, Sequence
 
-from logbook import FileHandler, Logger
+import loguru
 
 from data.delay import Delay as DbDelay
+from process.log import name_filter
 
 # Logger
-logger = Logger()
-file_handler = FileHandler(
-    "logs/delays.log", encoding="utf-8", level="DEBUG", delay=True
+loguru.logger.add(
+    "logs/delays.log",
+    level="DEBUG",
+    filter=name_filter("delay"),
+    format="{time:%Y-%m-%d %H:%M:%S.%f} [{level}] {message}",
 )
-file_handler.format_string = (
-    "{record.time:%Y-%m-%d %H:%M:%S.%f%z} [{record.level_name}] "
-    "{record.message}"
-)
-logger.handlers.append(file_handler)
+logger = loguru.logger.bind(name="delay")
 
 
 class Delay:

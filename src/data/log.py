@@ -30,14 +30,14 @@
 
 """Log configuration for the database."""
 
-from logbook import FileHandler, Logger
+import loguru
 
-logger = Logger()
-file_handler = FileHandler(
-    "logs/database.log", encoding="utf-8", level="DEBUG", delay=True
+from process.log import name_filter
+
+loguru.logger.add(
+    "logs/database.log",
+    level="DEBUG",
+    filter=name_filter("database"),
+    format="{time:%Y-%m-%d %H:%M:%S.%f} [{level}] {message}",
 )
-file_handler.format_string = (
-    "{record.time:%Y-%m-%d %H:%M:%S.%f%z} [{record.level_name}] "
-    "{record.message}"
-)
-logger.handlers.append(file_handler)
+logger = loguru.logger.bind(name="database")

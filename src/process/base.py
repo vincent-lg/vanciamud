@@ -44,9 +44,9 @@ if platform.system() == "Windows":
     import ctypes
     import ctypes.wintypes
 
-from logbook import FileHandler, StreamHandler
+from loguru import logger
 
-from process.log import ProcessLogger
+from process.log import name_filter
 
 # Still running (Windows).
 _STILL_ACTIVE = 259
@@ -68,27 +68,13 @@ class Process(metaclass=ABCMeta):
         self.started = False
         self.services = {}
         self.pid = os.getpid()
-        self.logger = ProcessLogger(self)
-
-        # Configure the process logger
-        self.file_handler = FileHandler(
+        logger.add(
             f"logs/{self.name}.log",
-            encoding="utf-8",
             level="DEBUG",
-            delay=True,
+            filter=name_filter(self.name),
+            format="{time:%Y-%m-%d %H:%M:%S.%f} [{level}] {message}",
         )
-        self.file_handler.format_string = (
-            "{record.time:%Y-%m-%d %H:%M:%S.%f%z} [{record.level_name}] "
-            "{record.message}"
-        )
-        self.stream_handler = StreamHandler(
-            sys.stdout, encoding="utf-8", level="INFO", bubble=True
-        )
-        self.stream_handler.format_string = (
-            "[{record.level_name}] {record.channel}: {record.message}"
-        )
-        self.file_handler.push_application()
-        self.stream_handler.push_application()
+        self.logger = logger.bind(name=self.name)
 
     def __repr__(self):
         desc = f"<Process {self.name}, "

@@ -52,6 +52,8 @@ from typing import Optional, Union
 
 from pygasus.model.decorators import lazy_property
 
+from tools.delay import Delay
+
 CONTEXTS = {}
 
 
@@ -311,3 +313,16 @@ class Context:
         self.leave()
         self.session.context = new_context
         new_context.enter()
+
+    def call_in(self, *args, **kwargs):
+        """Schedule a callback to run in X seconds.
+
+        Args:
+            delay (int or float or timedelta): the delay (in seconds).
+            callback (Callable): the callback (usually an instance method).
+
+        Additional positional or keyword arguments will be sent to the
+        callback when it's time to execute it.
+
+        """
+        return Delay.schedule(*args, **kwargs)

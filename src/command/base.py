@@ -36,7 +36,6 @@ from textwrap import dedent
 import traceback
 from typing import Any, Dict, Sequence, TYPE_CHECKING
 
-from pygasus.model.decorators import lazy_property
 
 from command.args import ArgumentError, CommandArgs, Namespace
 from command.log import logger
@@ -154,11 +153,11 @@ class Command:
         self.sep = sep
         self.arguments = arguments
 
-    @lazy_property
+    @property
     def session(self):
         return self.character and self.character.session or None
 
-    @lazy_property
+    @property
     def db(self):
         """Return the ProxyNamespace for this command."""
         return ProxyNamespace(self)

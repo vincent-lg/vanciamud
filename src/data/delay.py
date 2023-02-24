@@ -31,7 +31,7 @@
 
 from datetime import datetime
 
-from pygasus import Field, Model
+from data.base.model import Field, Model
 
 
 class Delay(Model):

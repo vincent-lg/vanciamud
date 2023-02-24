@@ -50,7 +50,7 @@ from textwrap import dedent
 import traceback
 from typing import Optional, Union
 
-from pygasus.model.decorators import lazy_property
+from data.decorators import lazy_property
 
 from tools.delay import Delay
 

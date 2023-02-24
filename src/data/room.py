@@ -29,30 +29,25 @@
 
 """The room DB Model."""
 
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from pygasus import Field, Model
-
-from data.handler.description import DescriptionField
-from data.handler.exits import ExitsField
-from data.handler.namespace import NamespaceField
+from data.base.node import Field, Node
+from data.handler.description import DescriptionHandler
+from data.handler.exits import ExitHandler
 from data.exit import Exit
 
 if TYPE_CHECKING:
     from data.character import Character
 
 
-class Room(Model):
+class Room(Node):
 
-    """Model to represent a room."""
+    """Node to represent a room."""
 
-    id: int = Field(primary_key=True)
-    barcode: str = Field(bpk=True, index=True, unique=True)
-    title: str
-    description: str = Field(custom_class=DescriptionField)
-    exits: dict = Field({}, custom_class=ExitsField)
-    db: dict = Field({}, custom_class=NamespaceField)
-    characters: List["Character"] = []
+    barcode: str = Field(default="unknown", unique=True)
+    title: str = "no title"
+    description: DescriptionHandler = Field(default_factory=DescriptionHandler)
+    exits: ExitHandler = Field(default_factory=ExitHandler)
 
     def look(self, character: "Character") -> str:
         """The character wants to look at this room.
@@ -79,6 +74,3 @@ class Room(Model):
         ]
 
         return "\n".join(lines)
-
-
-Exit.room = Room

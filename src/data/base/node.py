@@ -68,9 +68,6 @@ class Node(Model):
         """Return the list of nodes contained within self."""
         return self.locator.contents
 
-    def __hash__(self):
-        return hash(self.id)
-
     class Config:
 
         external_attrs = True

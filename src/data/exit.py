@@ -27,106 +27,23 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""The exit object, not destined to be sotred in the database.
-
-WARNING:
-    Contrary to most objects, the exit is not to be stored in
-    the database in its own table.  Instead, it is stored
-    (pickled) in the room itself.
-
-"""
+"""The exit object, a link."""
 
 from enum import Enum
-from typing import Optional, Set, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+from data.base.link import Field, Link
 
 if TYPE_CHECKING:
     from data.character import Character
     from data.room import Room
 
 
-class Exit:
-
-    """Simsple object to represent a one-way exit between two rooms."""
-
-    room = None
-
-    def __init__(
-        self,
-        direction: "Direction",
-        origin: Union["Room", str],
-        destination: Union["Room", str],
-        name: str,
-        aliases: Optional[Set[str]] = None,
-    ):
-        self.direction = direction
-        self.origin_barcode = origin = getattr(origin, "barcode", origin)
-        self.destination_barcode = getattr(destination, "barcode", destination)
-        self.name = name
-        self.aliases = aliases and set(aliases) or set()
-
-    def __repr__(self):
-        origin = self.origin_barcode
-        destination = self.destination_barcode
-        return (
-            f"<Exit(direction={self.direction}, origin={origin}, "
-            f"destination={destination}, name={self.name!r})"
-        )
-
-    def __str__(self):
-        origin = self.origin_barcode
-        destination = self.destination_barcode
-        return (
-            f"Exit {self.name!r} ({self.direction.value}) "
-            f"from {origin} to {destination}"
-        )
-
-    @property
-    def origin(self):
-        """Return the origin."""
-        return Exit.room.repository.get(barcode=self.origin_barcode)
-
-    @property
-    def destination(self):
-        """Return the destination."""
-        return Exit.room.repository.get(barcode=self.destination_barcode)
-
-    @property
-    def back(self):
-        """Return the back exit, if found in the destination."""
-        room = self.destination
-        if room is None:
-            return
-
-        opposite = self.direction.opposite
-        exit = room.exits.get_in(opposite)
-        if exit is None or exit.destination is not self.origin:
-            return
-
-        return exit
-
-    def can_see(self, character: "Character") -> bool:
-        """Return whether this exit can be seen by this character.
-
-        Args:
-            character (Character): the character trying to see this exit.
-
-        """
-        return True
-
-    def get_name_for(self, character: "Character") -> str:
-        """Return the exit name for this character.
-
-        Args:
-            character (Character): the character seeing this exit.
-
-        """
-        return self.name
-
-
 class Direction(Enum):
 
     """Direction enumeration."""
 
+    INVALID = "invalid"
     EAST = "east"
     SOUTHEAST = "southeast"
     SOUTH = "south"
@@ -155,4 +72,41 @@ _OPPOSITES = {
     Direction.NORTHEAST: Direction.SOUTHWEST,
     Direction.DOWN: Direction.UP,
     Direction.UP: Direction.DOWN,
+    Direction.INVALID: Direction.INVALID,
 }
+
+
+class Exit(Link):
+
+    """Link to represent a one-way exit between two rooms."""
+
+    direction: Direction = Direction.INVALID
+    name: str = "not set"
+    aliases: set[str] = Field(default_factory=set)
+
+    @property
+    def origin(self):
+        return type(self).get(id=self.origin_id)
+
+    @property
+    def destination(self):
+        destination_id = self.destination_id
+        return type(self).get(id=destination_id) if destination_id else None
+
+    def can_see(self, character: "Character") -> bool:
+        """Return whether this exit can be seen by this character.
+
+        Args:
+            character (Character): the character trying to see this exit.
+
+        """
+        return True
+
+    def get_name_for(self, character: "Character") -> str:
+        """Return the exit name for this character.
+
+        Args:
+            character (Character): the character seeing this exit.
+
+        """
+        return self.name

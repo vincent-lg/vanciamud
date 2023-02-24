@@ -45,6 +45,11 @@ class Model(BaseModel, metaclass=ModelMetaclass):
 
     """
 
+    def __hash__(self):
+        return hash(
+            type(self).get_primary_keys_from_model(self, as_tuple=True)
+        )
+
     def __setattr__(self, key: str, value: Any) -> None:
         """Update the object."""
         cls_attr = getattr(type(self), key, None)

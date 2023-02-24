@@ -27,74 +27,48 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Contexts custom field, to hold contexts."""
+"""Context handler, to store contexts on the character."""
 
 import pickle
 from typing import Optional
 
-from pygasus.model import CustomField
-
 from context.base import Context, CONTEXTS
+from data.handler.abc import BaseHandler
 
 
-class Contexts(list):
+class ContextHandler(BaseHandler):
 
     """An extended list of contexts for a character."""
 
     def __init__(self, *args, **kwargs):
-        self.parent = None
-        self.field = None
+        super().__init__(*args, **kwargs)
         self._contexts = []
         self._default_context = None
-        super().__init__(*args, **kwargs)
+
+    def __getstate__(self):
+        return (self._contexts, self._default_context)
+
+    def __setattr__(self, saved):
+        (self._contexts, self._default_context) = saved
 
     @property
     def active(self):
         """Return the active context."""
-        self._build_contexts()
-
         try:
             index = self.index(...)
         except ValueError:
             return self._default_context
 
         # Ellipsis is before the active context.
-        if index + 1 >= len(self):
+        if index + 1 >= len(self._contexts):
             return self._default_context
 
         return self._contexts[index + 1]
 
-    def _build_contexts(self):
-        """Build the contexts in cache."""
-        if len(self) == len(self._contexts) and self._default_context:
-            return
-
-        # Build context objects.
-        contexts = []
-        for definition in self:
-            if definition is ...:
-                contexts.append(...)
-                continue
-
-            context_path, context_options = definition
-            if (context_cls := CONTEXTS.get(context_path)) is not None:
-                context = context_cls(
-                    self.parent.session, options=context_options
-                )
-                contexts.append(context)
-        self._contexts = contexts
-
-        # Create the default context.
-        default_cls = CONTEXTS.get("character.game")
-        if default_cls is None:
-            raise ValueError("the ddefault context cannot be found")
-
-        self._default_context = default_cls(self.parent.session)
-
     def add(
         self,
         context_path: str,
-        options: Optional[dict] = None,
+        options: dict | None = None,
         active: bool = True,
         silent: bool = False,
     ):
@@ -125,18 +99,15 @@ class Contexts(list):
 
         # Remove the active context if appropriate.
         if active:
-            for to_clean in (self, self._contexts):
-                while ... in to_clean:
-                    to_clean.remove(...)
+            while ... in self._contexts:
+                self._contexts.remove(...)
 
         # Add the new context.
-        self.insert(0, (context_path, options))
         self._contexts.insert(0, new_context)
 
         # Set this new context to active if appropriate.
         if active:
-            for affected in (self, self._contexts):
-                affected.insert(0, ...)
+            self._contexts.insert(0, ...)
 
         self.save()
         return new_context
@@ -165,12 +136,10 @@ class Contexts(list):
 
             index = self._contexts.index(context)
             del self._contexts[index]
-            del self[index]
 
             # If the last context is active, remove the ellipsis.
             if self._contexts[-1] is ...:
                 self._contexts.pop()
-                self.pop()
 
             self.save()
         else:
@@ -189,53 +158,3 @@ class Contexts(list):
         """
         active = self.active
         return active.handle_input(user_input)
-
-    def save(self):
-        """Save the list of contexts in the parent."""
-        type(self.parent).repository.update(
-            self.parent, self.field, [], self.copy()
-        )
-
-
-class ContextsField(CustomField):
-
-    """A list stored in a pickled bytestring."""
-
-    field_name = "contexts"
-
-    def add(self):
-        """Add this field to a model.
-
-        Returns:
-            annotation type (Any): the type of field to store.
-
-        """
-        return bytes
-
-    def to_storage(self, value):
-        """Return the value to store in the storage engine.
-
-        Args:
-            value (Any): the original value in the field.
-
-        Returns:
-            to_store (Any): the value to store.
-            It must be of the same type as returned by `add`.
-
-        """
-        return pickle.dumps(value)
-
-    def to_field(self, value: bytes):
-        """Convert the stored value to the field value.
-
-        Args:
-            value (Any): the stored value (same type as returned by `add`).
-
-        Returns:
-            to_field (Any): the value to store in the field.
-            It must be of the same type as the annotation hint used
-            in the model.
-
-        """
-        data = pickle.loads(value)
-        return Contexts(data)

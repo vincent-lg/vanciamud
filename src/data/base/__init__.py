@@ -55,3 +55,22 @@ tables.  Both can also contain additional information which is serialized
 (see the `data.base.attributes` module for examples).
 
 """
+
+from typing import Callable
+
+from data.base.sql.engine import SqliteEngine
+
+
+def handle_data(
+    logging: Callable[[str, str], None] = None
+) -> SqliteEngine:
+    """Connect to the database and bind models."""
+    from data.account import Account
+    from data.character import Character
+    from data.delay import Delay
+    from data.room import Room
+    from data.session import Session
+    engine = SqliteEngine()
+    engine.init("talismud.db", logging=logging)
+    engine.bind({Account, Character, Delay, Room, Session})
+    return engine

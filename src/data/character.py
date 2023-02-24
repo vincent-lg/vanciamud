@@ -29,14 +29,12 @@
 
 """Character storage model."""
 
-from typing import Optional, Union, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
-from pygasus import Field, Model
-
-from data.handler.channels import ChannelsField
-from data.handler.contexts import ContextsField
-from data.handler.namespace import NamespaceField
-from data.handler.permissions import PermissionsField
+from data.base.node import Field, Node
+from data.handler.channels import ChannelHandler
+from data.handler.contexts import ContextHandler
+from data.handler.permissions import PermissionHandler
 
 if TYPE_CHECKING:
     from data.account import Account
@@ -44,23 +42,20 @@ if TYPE_CHECKING:
     from data.session import Session
 
 
-class Character(Model):
+class Character(Node):
 
     """Character storage model."""
 
     id: int = Field(primary_key=True)
-    name: str
-    contexts: list = Field([], custom_class=ContextsField)
-    db: dict = Field({}, custom_class=NamespaceField)
-    permissions: set = Field(
-        default_factory=set, custom_class=PermissionsField
-    )
-    channels: set = Field(default_factory=set, custom_class=ChannelsField)
-    room: Optional["Room"] = Field(None, owner=True)
-    account: Optional["Account"] = Field(None, owner=True)
-    session: Optional["Session"] = Field(None, owner=True)
+    name: str = "unknown"
+    contexts: ContextHandler = Field(default_factory=ContextHandler)
+    permissions: PermissionHandler = Field(default_factory=PermissionHandler)
+    channels: ChannelHandler = Field(default_factory=ChannelHandler)
+    room: Optional["Room"] = None
+    account: Optional["Account"] = None
+    session: Optional["Session"] = None
 
-    def msg(self, text: Union[str, bytes]) -> None:
+    def msg(self, text: str | bytes) -> None:
         """Send text to this session.
 
         This method will contact the session on the portal protocol.
@@ -74,5 +69,5 @@ class Character(Model):
         If the text is not yet encoded, use the session's encoding.
 
         """
-        if self.session:
-            self.session.msg(text)
+        if session := self.session:
+            session.msg(text)

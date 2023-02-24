@@ -31,7 +31,7 @@
 
 An account is a storage for player characters.  Each account is protected
 by a username and a password.  General options and contact information
-also are stored in the account as a rule.
+are also stored in the account as a rule.
 
 An account is a player feature, NPCs don't use them at all.
 
@@ -40,13 +40,12 @@ An account is a player feature, NPCs don't use them at all.
 from datetime import datetime
 import hashlib
 import os
-from typing import List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from dynaconf import settings
 from pydantic import EmailStr
-from pygasus import Field, Model
 
-from data.handler.namespace import NamespaceField
+from data.base.model import Field, Model
 
 if TYPE_CHECKING:
     from data.character import Character
@@ -57,17 +56,16 @@ class Account(Model):
     """Model to represent an account."""
 
     id: int = Field(primary_key=True)
-    username: str = Field(index=True, unique=True)
-    hashed_password: bytes
-    email: Optional[EmailStr] = Field(None, index=True, unique=True)
-    db: dict = Field({}, custom_class=NamespaceField)
+    username: str = Field(default="not set", unique=True)
+    hashed_password: bytes = b""
+    email: EmailStr | None = Field(None, unique=True)
     created_on: datetime = Field(default_factory=datetime.utcnow)
     updated_on: datetime = Field(default_factory=datetime.utcnow)
-    characters: List["Character"] = []
+    characters: list["Character"] = Field(default_factory=list)
 
     @staticmethod
     def hash_password(
-        plain_password: str, salt: Optional[bytes] = None
+        plain_password: str, salt: bytes | None = None
     ) -> bytes:
         """Hash the given plain text password, return it hashed.
 

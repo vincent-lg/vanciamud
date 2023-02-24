@@ -74,6 +74,7 @@ from data.base.sql.cache import Cache
 from data.base.sql.locator import Locator
 from data.base.sql.registry import BASE, REGISTRY
 from data.base.sql.session import TalisMUDSession
+from data.decorators import LazyPropertyDescriptor
 from data.handler.abc import BaseHandler
 
 COLUMNS = {
@@ -311,6 +312,7 @@ class SqliteEngine:
         """Clear all the engine's cache."""
         self.cache.clear()
         self.locator.clear()
+        LazyPropertyDescriptor.memory.clear()
 
     def get_model_column(
         self, model: Type[Model], field: Field

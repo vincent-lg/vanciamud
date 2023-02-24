@@ -27,16 +27,15 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Channels custom field, to hold channels."""
+"""Channel handler, to store channels for a character."""
 
 from typing import Union
 
-from pygasus.model import CustomField
-
 from channel.base import Channel
+from data.handler.abc import BaseHandler
 
 
-class Channels(set):
+class ChannelHandler(BaseHandler):
 
     """A set of channels.
 
@@ -46,12 +45,16 @@ class Channels(set):
     """
 
     def __init__(self, *args, **kwargs):
-        self.parent = None
-        self.field = None
         super().__init__(*args, **kwargs)
-        self._cache = {}
+        self._channels = set()
 
-    def add(self, channel: Union[str, Channel]):
+    def __getstate__(self):
+        return self._channels
+
+    def __setstate__(self, channels):
+        self._channels = channels
+
+    def add(self, channel: str | Channel):
         """Add a channel for this character.
 
         Args:
@@ -66,19 +69,17 @@ class Channels(set):
         else:
             path = channel.path
 
-        if path not in self:
-            super().add(path)
-            self._cache[path] = channel
+        if path not in self._channels:
+            self._channels.add(path)
             self.save()
 
     def clear(self):
         """Remove all channels."""
-        if len(self) > 1:
-            super().clear()
-            self._cache.clear()
+        if len(self._channels) > 1:
+            self._channels.clear()
             self.save()
 
-    def discard(self, channel: Union[str, Channel]):
+    def discard(self, channel: str | Channel):
         """Remove a channel.
 
         Args:
@@ -90,11 +91,11 @@ class Channels(set):
         else:
             path = channel.path
 
-        if path in self:
-            super().discard(path)
+        if path in self._channels:
+            self._channels.discard(path)
             self.save()
 
-    def has(self, channel: Union[str, Channel]) -> bool:
+    def has(self, channel: str | Channel) -> bool:
         """Return whether this channel is in the set.
 
         Args:
@@ -109,9 +110,9 @@ class Channels(set):
         else:
             path = channel.path
 
-        return path in self
+        return path in self._channels
 
-    def remove(self, channel: Union[str, Channel]):
+    def remove(self, channel: str | Channel):
         """Remove a channel.
 
         Args:
@@ -123,60 +124,6 @@ class Channels(set):
         else:
             path = channel.path
 
-        if path in self:
-            super().remove(path)
+        if path in self._channels:
+            self._channels.remove(path)
             self.save()
-
-    def save(self):
-        """Save the list of channels in the parent."""
-        type(self.parent).repository.update(
-            self.parent, self.field, set(), self.copy()
-        )
-
-
-class ChannelsField(CustomField):
-
-    """A set of channels stored in a string."""
-
-    field_name = "channels"
-
-    def add(self):
-        """Add this field to a model.
-
-        Returns:
-            annotation type (Any): the type of field to store.
-
-        """
-        return str
-
-    def to_storage(self, value):
-        """Return the value to store in the storage engine.
-
-        Args:
-            value (Any): the original value in the field.
-
-        Returns:
-            to_store (Any): the value to store.
-            It must be of the same type as returned by `add`.
-
-        """
-        return f" {' '.join(value)} "
-
-    def to_field(self, value: str):
-        """Convert the stored value to the field value.
-
-        Args:
-            value (Any): the stored value (same type as returned by `add`).
-
-        Returns:
-            to_field (Any): the value to store in the field.
-            It must be of the same type as the annotation hint used
-            in the model.
-
-        """
-        if value:
-            channels = [name for name in value.split(" ") if name]
-        else:
-            channels = set()
-
-        return Channels(channels)

@@ -27,40 +27,44 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Description custom field, to hold descriptons."""
+"""Description handler, to hold descriptons."""
 
 from textwrap import fill, wrap
-from typing import Dict, Optional
-
-from pygasus.model import CustomField
 
 
-class Description(str):
+from data.handler.abc import BaseHandler
 
-    """A description handler, behaving like a string."""
+
+class DescriptionHandler(BaseHandler):
+
+    """A description handler, with display methods."""
 
     def __init__(self, *args, **kwargs):
-        self.parent = None
-        self.field = None
-        self.text = args[0]
+        super().__init__(*args, **kwargs)
+        self.text = ""
 
-    def __repr__(self):
-        return repr(self.text)
-
-    def __str__(self):
+    def __getstate__(self):
         return self.text
 
-    def set(self, text: str):
+    def __setstate__(self, text):
+        self.text = text
+
+    def __repr__(self) -> str:
+        return repr(self.text)
+
+    def __str__(self) -> str:
+        return self.text
+
+    def set(self, text: str) -> None:
         """Set the description and save it."""
         self.text = text
-        self.save()
 
     def format(
         self,
-        vars: Optional[Dict[str, str]] = None,
+        vars: dict[str, str] | None = None,
         indent_with: str = " " * 3,
         indent_no_wrap: bool = False,
-        width: Optional[int] = 78,
+        width: int | None = 78,
     ) -> str:
         """Format the description and return a formatted string.
 
@@ -76,6 +80,9 @@ class Description(str):
                     be indented.
             width (int, optional): the maximum width of each line.  If
                     set to None, do not wrap anything.
+
+        Returns:
+            formatted (str): the formatted text.
 
         """
         vars = vars or {}
@@ -116,7 +123,7 @@ class Description(str):
         indent_all: str = "",
         indent_with: str = " " * 3,
         indent_no_wrap: bool = False,
-        width: Optional[int] = 78,
+        width: int | None = 78,
         show_line_numbers: bool = False,
     ) -> str:
         """Return a raw description, with variables intact.
@@ -133,7 +140,7 @@ class Description(str):
                     be indented.
             width (int, optional): the maximum width of each line.  If
                     set to None, do not wrap anything.
-            show_line_numbers (bool, opt): show paragraph line numbers.
+            show_line_numbers (bool, optional): show paragraph line numbers.
 
         """
         paragraphs = self.text.splitlines()
@@ -167,57 +174,3 @@ class Description(str):
             paragraphs[num_line] = paragraph
 
         return "\n".join(paragraphs)
-
-    def save(self):
-        """Save the description."""
-        type(self.parent).repository.update(
-            self.parent, self.field, "", self.text
-        )
-
-
-class DescriptionField(CustomField):
-
-    """A description stored in a string."""
-
-    field_name = "description"
-
-    def add(self):
-        """Add this field to a model.
-
-        Returns:
-            annotation type (Any): the type of field to store.
-
-        """
-        return str
-
-    def to_storage(self, value):
-        """Return the value to store in the storage engine.
-
-        Args:
-            value (Any): the original value in the field.
-
-        Returns:
-            to_store (Any): the value to store.
-            It must be of the same type as returned by `add`.
-
-        """
-        return str(value)
-
-    def to_field(self, value: str):
-        """Convert the stored value to the field value.
-
-        Args:
-            value (Any): the stored value (same type as returned by `add`).
-
-        Returns:
-            to_field (Any): the value to store in the field.
-            It must be of the same type as the annotation hint used
-            in the model.
-
-        """
-        return Description(value)
-
-    @staticmethod
-    def from_blueprint(handler: Description, text: str):
-        """Set the description."""
-        handler.set(text)

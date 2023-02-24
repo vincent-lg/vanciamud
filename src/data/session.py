@@ -35,12 +35,10 @@ from queue import Queue
 from typing import Optional, Union, TYPE_CHECKING
 from uuid import UUID
 
-from pydantic import PrivateAttr
-from pygasus import Field, Model
-from pygasus.model.decorators import lazy_property
-
 from context.base import CONTEXTS
-from data.handler.namespace import NamespaceField
+from data.base.model import Field, Model
+from data.decorators import lazy_property
+from data.handler.namespace import NamespaceHandler
 
 if TYPE_CHECKING:
     from data.character import Character
@@ -56,26 +54,25 @@ class Session(Model):
     uuid: UUID = Field(primary_key=True)
     ip_address: str
     secured: bool
-    creation: datetime
-    encoding: str
-    db: dict = Field({}, custom_class=NamespaceField)
-    context_path: str
-    context_options: bytes
+    creation: datetime = Field(default_factory=datetime.utcnow)
+    encoding: str = "utf-8"
+    db: NamespaceHandler = Field(default_factory=NamespaceHandler)
+    context_path: str = "unset"
+    context_options: dict = Field(default_factory=dict)
     character: Optional["Character"] = None
-    _cached_context = PrivateAttr()
 
     @lazy_property
     def context(self):
         """Load the context from the context path."""
         if (context := CONTEXTS.get(self.context_path)) is None:
             raise ValueError(f"the context {self.context_path} doesn't exist")
-        return context(self)
+        return context(self, self.context_options)
 
     @context.setter
     def context(self, new_context):
         """Change the session's context."""
         self.context_path = new_context.pyname
-        self.context_options = pickle.dumps(new_context.options)
+        self.context_options = new_context.options
 
     def msg(self, text: Union[str, bytes]) -> None:
         """Send text to this session.
@@ -100,5 +97,4 @@ class Session(Model):
     def logout(self):
         """Prepare the session for logout."""
         if character := self.character:
-            character.db.log_at = character.room
-            character.room.characters.remove(character)
+            (character.room, character.location) = (character.location, None)

@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,32 +27,33 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Message of the Day context, displayed when one connects to TalisMUD."""
+"""Base handler, base class for all handlers."""
 
-from context.base import Context
+from typing import Any
 
 
-class MOTD(Context):
+class BaseHandler:
 
-    """Context called when the user first connects to TalisMUD.
+    """Base class for all handlers."""
 
-    The user will leave this context at once, to enter connection.home.
+    def __setattr__(self, key: str, value: any) -> None:
+        object.__setattr__(self, key, value)
+        self.save()
 
-    """
+    def save(self):
+        """Save the handler in its owner."""
+        model, attr = getattr(self, "model", (None, None))
+        if model and attr:
+            # Force the model to save.
+            field = type(model).__fields__[attr]
+            if field.field_info.extra.get("savable", True):
+                setattr(model, attr, self)
 
-    text = r"""Welcome to
-          *   )           )                   (    (  (
-        ` )  /(  (     ( /((        (  (      )\   )\ )\
-         ( )(_))))\(   )\())\  (    )\))(  ((((_)(((_)(_)
-        (_(_())/((_)\ (_))((_) )\ )((_))\   )\ _ )\)_()_)
-        |_   _(_))((_)| |_ (_)_(_/( (()(_)  (_)_\(_) || |
-          | | / -_|_-<|  _|| | ' \)) _` |    / _ \ | || |
-          |_| \___/__/ \__||_|_||_|\__, |   /_/ \_\|_||_|
-                                   |___/
-    """
+    def from_blueprint(self, value: Any) -> None:
+        """Update the handler from the blueprint.
 
-    def refresh(self):
-        """Leave this context at once."""
-        super().refresh()
-        print("Before move")
-        self.move("connection.home")
+        Args:
+            value (Any): the value to update.
+
+        """
+        pass

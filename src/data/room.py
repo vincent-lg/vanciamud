@@ -44,7 +44,7 @@ class Room(Node):
 
     """Node to represent a room."""
 
-    barcode: str = Field(default="unknown", unique=True)
+    barcode: str = Field(bpk=True, default="unknown", unique=True)
     title: str = "no title"
     description: DescriptionHandler = Field(default_factory=DescriptionHandler)
     exits: ExitHandler = Field(default_factory=ExitHandler)

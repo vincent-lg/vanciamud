@@ -56,8 +56,8 @@ class Account(Model):
     """Model to represent an account."""
 
     id: int = Field(primary_key=True)
-    username: str = Field(default="not set", unique=True)
-    hashed_password: bytes = b""
+    username: str = Field(unique=True)
+    hashed_password: bytes
     email: EmailStr | None = Field(None, unique=True)
     created_on: datetime = Field(default_factory=datetime.utcnow)
     updated_on: datetime = Field(default_factory=datetime.utcnow)

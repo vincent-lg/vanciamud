@@ -39,6 +39,7 @@ from dynaconf import settings
 import loguru
 import yaml
 
+from data.handler.abc import BaseHandler
 from data.room import Room
 from process.log import name_filter
 from service.base import BaseService
@@ -75,10 +76,12 @@ class Service(BaseService):
     async def setup(self):
         """Set the MudIO up."""
         self.load_blueprints()
+        data = self.parent.services["data"]
 
         for blueprint in self.blueprints.values():
             if settings.BLUEPRINT_AUTO_APPLY:
-                blueprint.apply()
+                with data.engine.session.begin():
+                    blueprint.apply()
 
     async def cleanup(self):
         """Clean the service up before shutting down."""
@@ -147,15 +150,14 @@ class Blueprint:
                 continue
 
             model = MODELS[d_type]
-            keys = []
+            keys = {}
             for field in model.__fields__.values():
                 if field.field_info.extra.get("bpk", False):
                     value = definition.get(field.name, ...)
                     if value is ...:
                         continue
 
-                    field = getattr(model, field.name)
-                    keys.append(field == value)
+                    keys[field.name] = value
 
             if not keys:
                 logger.warning(
@@ -164,30 +166,37 @@ class Blueprint:
                 continue
 
             # Try go get the object from the database.
-            result = model.repository.select(reduce(operator.and_, keys))
-            if result:
-                if len(result) > 1:
-                    logger.warning(
-                        f"More than one object match {definition}, "
-                        "not updating any."
-                    )
-                    continue
-
-                obj = result[0]
+            obj = model.get(raise_not_found=False, **keys)
+            if obj is not None:
                 logger.debug(f"Object {obj} was found and will be updated.")
 
                 for key, value in definition.items():
-                    field = getattr(model, key, None)
-                    if custom := field.field_info.extra.get("custom_class"):
-                        custom.from_blueprint(getattr(obj, key), value)
+                    field = model.__fields__[key]
+                    if issubclass(field.type_, BaseHandler):
+                        getattr(obj, key).from_blueprint(value)
                     else:
                         setattr(obj, key, value)
             else:
                 # The object will be created.
-                logger.debug(f"Attempting to create {definition}")
+                logger.debug(f"Attempting to create {keys}")
+                safe, handlers = {}, {}
+                for field in model.__fields__.values():
+                    value = definition.get(field.name, ...)
+                    if value is ...:
+                        continue
+
+                    if issubclass(field.type_, BaseHandler):
+                        handlers[field.name] = value
+                    else:
+                        safe[field.name] = value
+
                 try:
-                    obj = model.repository.create(**definition)
+                    obj = model.create(**safe)
                 except Exception:
                     logger.exception(
                         "An error occurred while creating this object:"
                     )
+
+                # Update the handler values.
+                for key, value in handlers.items():
+                    getattr(obj, key).from_blueprint(value)

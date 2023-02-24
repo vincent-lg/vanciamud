@@ -56,9 +56,9 @@ class Home(Context):
     def other_input(self, username: str):
         """The user entered something else."""
         username = username.lower()
-        accounts = Account.repository.select(Account.username == username)
-        if accounts:
-            self.session.db.account = accounts[0]
+        account = Account.get(username=username, raise_not_found=False)
+        if account:
+            self.session.db.account = account
             self.move("connection.password")
         else:
             self.msg(

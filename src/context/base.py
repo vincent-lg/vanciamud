@@ -277,9 +277,9 @@ class Context:
 
         try:
             res = method(*method_args)
-        except Exception:
+        except Exception as err:
             self.msg(traceback.format_exc())
-            return True
+            raise err from None
 
         return res
 

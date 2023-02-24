@@ -70,6 +70,7 @@ class Service(BaseService):
         self.data = self.services["data"]
         self.host = self.services["host"]
         self.mudio = self.services["mudio"]
+        self.world = self.services["world"]
         self.host.schedule_hook("connected", self.connected_to_CRUX)
         self.data.setup_shell(self.console)
 
@@ -150,7 +151,7 @@ class Service(BaseService):
         """A new game process wants to be registered."""
         self.logger.info(f"The game is now registered under ID {game_id}")
         self.game_id = game_id
-        self.restore_delays()
+        #self.restore_delays()
 
     async def handle_stop_game(self, origin: Origin, game_id: str):
         """Stop this game process."""
@@ -227,10 +228,13 @@ class Service(BaseService):
 
         """
         self.logger.debug(f"Connection of a new session: {session_id}")
-        session = await self.data.new_session(
-            session_id, creation, ip_address, secured
-        )
-        session.context.enter()
+        with self.data.engine.session.begin():
+            session = await self.data.new_session(
+                session_id, creation, ip_address, secured
+            )
+
+            session.context.enter()
+
         await self.mudio.send_output(0)
         await self.send_portal_commands()
 
@@ -250,7 +254,10 @@ class Service(BaseService):
 
         """
         self.logger.debug(f"Deletion of a session: {session_id}")
-        deletion = self.data.delete_session(session_id)
+
+        with self.data.engine.session.begin():
+            deletion = self.data.delete_session(session_id)
+
         await self.host.answer(origin, dict(deletion=deletion))
         await self.send_portal_commands()
 

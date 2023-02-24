@@ -52,14 +52,14 @@ class NamespaceHandler(BaseHandler):
         self._data = data
 
     def __getattr__(self, key):
-        if key in ("model", "_data"):
+        if key == "model" or key.startswith("_"):
             return object.__getattr__(self, key)
 
         value = self._data[key]
         return value
 
     def __setattr__(self, key, value):
-        if key in ("model", "_data"):
+        if key == "model" or key.startswith("_"):
             super().__setattr__(key, value)
         else:
             self._data[key] = value

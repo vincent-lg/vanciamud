@@ -74,15 +74,9 @@ from data.base.sql.cache import Cache
 from data.base.sql.locator import Locator
 from data.base.sql.registry import BASE, REGISTRY
 from data.base.sql.session import TalisMUDSession
+from data.base.sql.types import SQL_TYPES
 from data.decorators import LazyPropertyDescriptor
 from data.handler.abc import BaseHandler
-
-COLUMNS = {
-    float: (Float, {}, ..., ...),
-    int: (Integer, {}, ..., ...),
-    str: (String, {}, ..., ...),
-    UUID: (String, {}, str, UUID),
-}
 
 
 class SqliteEngine:
@@ -141,6 +135,8 @@ class SqliteEngine:
         self.engine = create_engine(
             f"sqlite+pysqlite:///{sql_file_name}", future=True
         )
+        self.session = TalisMUDSession(self.engine)
+        self.session.talismud_engine = self
 
         # Add a function to override lower, as it only supports
         # ASCII in sqlite3.
@@ -160,7 +156,6 @@ class SqliteEngine:
         self.tables = {}
         self.attr_tables = {}
         self.iattr_tables = {}
-        self.session = Session(self.engine)
 
     def close(self):
         """Close the connection to the storage engine."""
@@ -224,8 +219,6 @@ class SqliteEngine:
             self.bind_model(model)
 
         self.metadata.create_all(self.engine)
-        self.session = TalisMUDSession(self.engine)
-        self.session.talismud_engine = self
 
     def bind_model(self, model: Type[Model]) -> None:
         """Bind a new model, creating one or several tables.
@@ -314,6 +307,17 @@ class SqliteEngine:
         self.locator.clear()
         LazyPropertyDescriptor.memory.clear()
 
+    def log(self, message: str, arguments: list[Any] | None = None):
+        """Log the message, if appropriate.
+
+        Args:
+            message (str): the message.
+            arguments (list, optional): the list of arguments.
+
+        """
+        if log := self.logging:
+            log(message, arguments)
+
     def get_model_column(
         self, model: Type[Model], field: Field
     ) -> tuple[TypeEngine, dict[str, Any]]:
@@ -332,7 +336,7 @@ class SqliteEngine:
                 to options.
 
         """
-        if column_data := COLUMNS.get(field.type_):
+        if column_data := SQL_TYPES.get(field.type_):
             column, kwargs, *_ = column_data
             return (column, dict(kwargs))
 
@@ -474,11 +478,11 @@ class SqliteEngine:
         model = self.cache.get(model_class, **kwargs)
         if model is None:
             table, nattr, inattr = self._get_three_tables(model_class)
-            pkeys = model_class.get_primary_keys_from_attrs(kwargs)
+            keys = model_class.get_primary_keys_and_uniques_from_attrs(kwargs)
             where = [
-                getattr(table, key) == value for key, value in pkeys.items()
+                getattr(table, key) == value for key, value in keys.items()
             ]
-            if not pkeys and inattr:
+            if not keys and inattr:
                 statement = (
                     select(table, nattr)
                     .join_from(table, nattr)
@@ -827,7 +831,7 @@ class SqliteEngine:
         default = (..., ..., pickle.dumps, ...)
         for key, value in attributes.items():
             field = model_class.__fields__[key]
-            _, _, convert, _ = COLUMNS.get(field.type_, default)
+            _, _, convert, _ = SQL_TYPES.get(field.type_, default)
             if convert is not ...:
                 value = convert(value)
             fields[key] = value
@@ -856,7 +860,7 @@ class SqliteEngine:
         default = (...,) * 3 + (pickle.loads,)
         for key, value in fields.items():
             field = model_class.__fields__[key]
-            _, _, _, convert = COLUMNS.get(field.type_, default)
+            _, _, _, convert = SQL_TYPES.get(field.type_, default)
             if convert is not ...:
                 value = convert(value)
             attributes[key] = value

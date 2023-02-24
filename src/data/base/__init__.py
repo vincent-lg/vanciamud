@@ -62,7 +62,7 @@ from data.base.sql.engine import SqliteEngine
 
 
 def handle_data(
-    logging: Callable[[str, str], None] = None
+    logging: Callable[[str, str], None] = None, memory: bool = False
 ) -> SqliteEngine:
     """Connect to the database and bind models."""
     from data.account import Account
@@ -71,6 +71,7 @@ def handle_data(
     from data.room import Room
     from data.session import Session
     engine = SqliteEngine()
-    engine.init("talismud.db", logging=logging)
+    kwargs = dict(file_name="talismud.db", memory=memory, logging=logging)
+    engine.init(**kwargs)
     engine.bind({Account, Character, Delay, Room, Session})
     return engine

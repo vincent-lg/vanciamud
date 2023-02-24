@@ -174,3 +174,7 @@ class DescriptionHandler(BaseHandler):
             paragraphs[num_line] = paragraph
 
         return "\n".join(paragraphs)
+
+    def from_blueprint(self, text: str):
+        """Recover the description from a blueprint."""
+        self.text = text

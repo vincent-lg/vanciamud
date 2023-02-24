@@ -262,13 +262,15 @@ class Service(BaseService):
 
         """
         received = datetime.utcnow()
-        context = session.context
-        context.handle_input(command)
-        if context.hide_input:
-            command = "*" * 8
+        data = self.parent.data
+        with data.engine.session.begin():
+            context = session.context
+            context.handle_input(command)
+            if context.hide_input:
+                command = "*" * 8
 
-        executed = datetime.utcnow()
-        self.record_stat(session, command, sent, received, executed)
+            executed = datetime.utcnow()
+            self.record_stat(session, command, sent, received, executed)
 
     async def send_output(self, input_id: Optional[int] = None):
         """Send output synchronously."""

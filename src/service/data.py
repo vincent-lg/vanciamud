@@ -91,27 +91,27 @@ class Service(BaseService):
         This method returns a new Session object.
 
         """
-        session = Session.repository.create(
+        session = Session.create(
             uuid=session_id,
             creation=creation,
             ip_address=ip_address,
             secured=secured,
             encoding=settings.DEFAULT_ENCODING,
             context_path="connection.motd",
-            context_options=pickle.dumps({}),
+            context_options={},
         )
         return session
 
     def get_session(self, session_id: UUID) -> Optional[Session]:
         """Return, if found, the stored session with this UUID."""
-        return Session.repository.get(uuid=session_id)
+        return Session.get(uuid=session_id)
 
     def delete_session(self, session_id: UUID) -> Optional[Session]:
         """Delete, if found, the stored session with this UUID."""
         if session := self.get_session(session_id):
             logger.debug(f"The session {session_id} is to be deleted.")
             session.logout()
-            Session.repository.delete(session)
+            Session.delete(session)
             return True
 
         return False

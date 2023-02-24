@@ -233,6 +233,35 @@ class ModelMetaclass(BaseModelMetaclass):
 
         return pkeys
 
+    def get_primary_keys_and_uniques_from_attrs(
+        cls, attrs: dict[str, Any], sanitize: bool = True
+    ) -> dict[str, Any]:
+        """Return the primary key and unique fields from attributes.
+
+        Args:
+            attrs (dict): the attributes.
+            sanitize (bool): if set to True (the default),
+                    attribute values will be "sanitized", converted
+                    to their database value if necessary.
+
+        Returns:
+            primary_keys (dict): the primary key and unique fields,
+                    with field names as keys and values as values.
+
+        """
+        if sanitize:
+            attrs = ModelMetaclass.engine.as_fields(cls, attrs)
+
+        keys = {}
+        for key, value in attrs.items():
+            field = cls.__fields__[key]
+            pk = field.field_info.extra.get("primary_key", False)
+            unique = field.field_info.extra.get("unique", False)
+            if pk or unique:
+                keys[key] = value
+
+        return keys
+
     def get_primary_keys_from_model(
         cls, model: "Model", as_tuple: bool = False
     ) -> tuple[Any] | dict[str, Any]:

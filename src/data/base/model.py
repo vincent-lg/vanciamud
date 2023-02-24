@@ -34,6 +34,7 @@ from typing import Any, Type
 from pydantic import BaseModel, Field  # noqa: F401
 
 from data.base.abc import ModelMetaclass
+from data.decorators import LazyPropertyDescriptor
 
 
 class Model(BaseModel, metaclass=ModelMetaclass):
@@ -53,7 +54,7 @@ class Model(BaseModel, metaclass=ModelMetaclass):
     def __setattr__(self, key: str, value: Any) -> None:
         """Update the object."""
         cls_attr = getattr(type(self), key, None)
-        if isinstance(cls_attr, property):
+        if isinstance(cls_attr, (property, LazyPropertyDescriptor)):
             object.__setattr__(self, key, value)
         else:
             old_value = object.__getattribute__(self, key)
@@ -72,6 +73,7 @@ class Model(BaseModel, metaclass=ModelMetaclass):
     class Config:
 
         extra = "forbid"
+        keep_untouched = (LazyPropertyDescriptor,)
         validate_assignment = True
         arbitrary_types_allowed = True
         copy_on_model_validation = False

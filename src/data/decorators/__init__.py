@@ -27,32 +27,9 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Message of the Day context, displayed when one connects to TalisMUD."""
+"""TalisMUD model decorators."""
 
-from context.base import Context
-
-
-class MOTD(Context):
-
-    """Context called when the user first connects to TalisMUD.
-
-    The user will leave this context at once, to enter connection.home.
-
-    """
-
-    text = r"""Welcome to
-          *   )           )                   (    (  (
-        ` )  /(  (     ( /((        (  (      )\   )\ )\
-         ( )(_))))\(   )\())\  (    )\))(  ((((_)(((_)(_)
-        (_(_())/((_)\ (_))((_) )\ )((_))\   )\ _ )\)_()_)
-        |_   _(_))((_)| |_ (_)_(_/( (()(_)  (_)_\(_) || |
-          | | / -_|_-<|  _|| | ' \)) _` |    / _ \ | || |
-          |_| \___/__/ \__||_|_||_|\__, |   /_/ \_\|_||_|
-                                   |___/
-    """
-
-    def refresh(self):
-        """Leave this context at once."""
-        super().refresh()
-        print("Before move")
-        self.move("connection.home")
+from data.decorators.lazy_property import (  # noqa: F401
+    LazyPropertyDescriptor,
+    lazy_property,
+)

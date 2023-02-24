@@ -64,9 +64,11 @@ class Session(Model):
     @lazy_property
     def context(self):
         """Load the context from the context path."""
-        if (context := CONTEXTS.get(self.context_path)) is None:
+        cls = CONTEXTS.get(self.context_path)
+        if cls is None:
             raise ValueError(f"the context {self.context_path} doesn't exist")
-        return context(self, self.context_options)
+
+        return cls(self, self.context_options)
 
     @context.setter
     def context(self, new_context):

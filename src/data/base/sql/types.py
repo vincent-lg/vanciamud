@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,32 +27,22 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Message of the Day context, displayed when one connects to TalisMUD."""
+"""SQL types."""
 
-from context.base import Context
+from datetime import date, datetime
+from uuid import UUID
 
+from sqlalchemy import (
+    Boolean, Date, DateTime, Float, Integer, LargeBinary, String
+)
 
-class MOTD(Context):
-
-    """Context called when the user first connects to TalisMUD.
-
-    The user will leave this context at once, to enter connection.home.
-
-    """
-
-    text = r"""Welcome to
-          *   )           )                   (    (  (
-        ` )  /(  (     ( /((        (  (      )\   )\ )\
-         ( )(_))))\(   )\())\  (    )\))(  ((((_)(((_)(_)
-        (_(_())/((_)\ (_))((_) )\ )((_))\   )\ _ )\)_()_)
-        |_   _(_))((_)| |_ (_)_(_/( (()(_)  (_)_\(_) || |
-          | | / -_|_-<|  _|| | ' \)) _` |    / _ \ | || |
-          |_| \___/__/ \__||_|_||_|\__, |   /_/ \_\|_||_|
-                                   |___/
-    """
-
-    def refresh(self):
-        """Leave this context at once."""
-        super().refresh()
-        print("Before move")
-        self.move("connection.home")
+SQL_TYPES = {
+    bool: (Boolean, {}, ..., ...),
+    bytes: (LargeBinary, {}, ..., ...),
+    date: (Date, {}, ..., ...),
+    datetime: (DateTime, {}, ..., ...),
+    float: (Float, {}, ..., ...),
+    int: (Integer, {}, ..., ...),
+    str: (String, {}, ..., ...),
+    UUID: (String, {}, str, UUID),
+}

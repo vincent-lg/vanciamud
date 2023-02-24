@@ -40,9 +40,10 @@ class TalisMUDSession(Session):
 
     def begin(self):
         """Begin a new session."""
-        print("BEGIN")
-        SessionTransaction.talismud_engine = self.talismud_engine
-        return TalisMUDSessionTransaction(self)
+        TalisMUDSessionTransaction.talismud_engine = self.talismud_engine
+        transaction = TalisMUDSessionTransaction(self)
+        self.talismud_engine.log("BEGIN", (id(transaction),))
+        return transaction
 
 
 class TalisMUDSessionTransaction(SessionTransaction):
@@ -52,9 +53,9 @@ class TalisMUDSessionTransaction(SessionTransaction):
     talismud_engine = None
 
     def commit(self, *args, **kwargs):
-        print("COMMIT")
+        self.talismud_engine.log("COMMIT", (id(self),))
         super().commit(*args, **kwargs)
 
     def rollback(self, *args, **kwargs):
-        print("ROLLBACK")
+        self.talismud_engine.log("ROLLBACK", (id(self),))
         super().rollback(*args, **kwargs)

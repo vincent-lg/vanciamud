@@ -70,6 +70,7 @@ def handle_data(
     from data.delay import Delay
     from data.room import Room
     from data.session import Session
+
     engine = SqliteEngine()
     kwargs = dict(file_name="talismud.db", memory=memory, logging=logging)
     engine.init(**kwargs)

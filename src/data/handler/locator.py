@@ -36,7 +36,6 @@ from typing import Optional, TYPE_CHECKING
 from data.handler.abc import BaseHandler
 
 if TYPE_CHECKING:
-    from data.base.model import Model
     from data.base.node import Node
 
 
@@ -62,7 +61,8 @@ class LocationHandler(BaseHandler):
     def how_many(self, content: "Node") -> int:
         """Return the quantity of the specified node.
 
-        If the node is unique, it will return either 0 or 1.  It will return a potentially greater number if this object is stackable.
+        If the node is unique, it will return either 0 or 1.  It will
+        return a potentially greater number if this object is stackable.
 
         Args:
             content (Node): the content.

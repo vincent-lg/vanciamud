@@ -29,7 +29,6 @@
 
 """Namespace handler to store flexible data."""
 
-import pickle
 from typing import Any
 
 from data.handler.abc import BaseHandler

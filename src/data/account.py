@@ -64,9 +64,7 @@ class Account(Model):
     characters: list["Character"] = Field(default_factory=list)
 
     @staticmethod
-    def hash_password(
-        plain_password: str, salt: bytes | None = None
-    ) -> bytes:
+    def hash_password(plain_password: str, salt: bytes | None = None) -> bytes:
         """Hash the given plain text password, return it hashed.
 
         If the salt is provided, it is used for hashing.  If not,

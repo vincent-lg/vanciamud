@@ -58,13 +58,11 @@ from pathlib import Path
 import pickle
 from queue import Queue
 from typing import Any, Callable, Tuple, Type
-from uuid import UUID
 
 from pydantic import Field
 from sqlalchemy import create_engine, delete, event, insert, select, update
 from sqlalchemy import Column, Index, UniqueConstraint
-from sqlalchemy import Float, ForeignKey, Integer, LargeBinary, String
-from sqlalchemy.orm import Session
+from sqlalchemy import ForeignKey, Integer, LargeBinary, String
 from sqlalchemy.sql.roles import SQLRole
 from sqlalchemy.sql.type_api import TypeEngine
 

@@ -36,7 +36,6 @@ from data.base.link import Field, Link
 
 if TYPE_CHECKING:
     from data.character import Character
-    from data.room import Room
 
 
 class Direction(Enum):

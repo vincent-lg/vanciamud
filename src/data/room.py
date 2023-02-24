@@ -34,7 +34,6 @@ from typing import TYPE_CHECKING
 from data.base.node import Field, Node
 from data.handler.description import DescriptionHandler
 from data.handler.exits import ExitHandler
-from data.exit import Exit
 
 if TYPE_CHECKING:
     from data.character import Character

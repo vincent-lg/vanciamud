@@ -151,7 +151,7 @@ class Service(BaseService):
         """A new game process wants to be registered."""
         self.logger.info(f"The game is now registered under ID {game_id}")
         self.game_id = game_id
-        #self.restore_delays()
+        # self.restore_delays()
 
     async def handle_stop_game(self, origin: Origin, game_id: str):
         """Stop this game process."""

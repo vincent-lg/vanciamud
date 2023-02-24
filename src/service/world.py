@@ -29,8 +29,6 @@
 
 """World service, here to handle blueprints."""
 
-from functools import reduce
-import operator
 from pathlib import Path
 from typing import Any, Dict, Sequence
 

@@ -29,8 +29,6 @@
 
 """Channel handler, to store channels for a character."""
 
-from typing import Union
-
 from channel.base import Channel
 from data.handler.abc import BaseHandler
 

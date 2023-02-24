@@ -30,7 +30,6 @@
 """Data service."""
 
 from datetime import datetime
-import pickle
 from typing import Optional
 from uuid import UUID
 

@@ -30,7 +30,6 @@
 """Session storage model."""
 
 from datetime import datetime
-import pickle
 from queue import Queue
 from typing import Optional, Union, TYPE_CHECKING
 from uuid import UUID

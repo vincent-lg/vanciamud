@@ -29,9 +29,6 @@
 
 """Context handler, to store contexts on the character."""
 
-import pickle
-from typing import Optional
-
 from context.base import Context, CONTEXTS
 from data.handler.abc import BaseHandler
 

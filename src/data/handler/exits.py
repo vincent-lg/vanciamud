@@ -29,9 +29,8 @@
 
 """Exit handler, to store room exits."""
 
-from typing import Optional, Set, Tuple, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
-from data.base.link import Link
 from data.handler.abc import BaseHandler
 from data.exit import Exit, Direction
 
@@ -114,7 +113,7 @@ class ExitHandler(BaseHandler):
         self.save()
 
         if back:
-            destionation.exits.load_exits()
+            destination.exits.load_exits()
             opposite = direction.opposite
             if opposite not in direction.exits.exits:
                 direction.exits.add(
@@ -127,9 +126,8 @@ class ExitHandler(BaseHandler):
         """Load, if necessary, this room's exit."""
         if self.exits is None:
             room, _ = self.model
-            query = (
-                (Exit.table.origin_id == room.id)
-                & (Exit.table.destination_id.isnot(None))
+            query = (Exit.table.origin_id == room.id) & (
+                (Exit.table.destination_id.isnot(None))
             )
             exits = Exit.select(query)
             self.exits = {exit.direction: exit for exit in exits}

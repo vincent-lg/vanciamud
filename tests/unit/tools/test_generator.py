@@ -1,0 +1,107 @@
+import string
+
+import pytest
+
+from data.generator import Generator
+from tools.generator import RandomGenerator
+
+class LittleGenerator(RandomGenerator):
+
+    """A little generator with only three patterns and no rules."""
+
+    patterns = (
+        "01",
+        "01",
+        "AB",
+    )
+
+
+def test_generate_without_rules(db):
+    db.bind({Generator})
+    codes = []
+    for _ in range(8):
+        code = LittleGenerator.generate()
+        assert len(code) == 3
+        assert code[0] in "01"
+        assert code[1] in "01"
+        assert code[2] in "AB"
+        assert code not in codes
+        codes.append(code)
+
+
+def test_generate_overflow_without_rules(db):
+    db.bind({Generator})
+    for _ in range(8):
+        LittleGenerator.generate()
+
+    with pytest.raises(ValueError):
+        LittleGenerator.generate()
+
+
+class LittleGenerator(RandomGenerator):
+
+    """A little generator with only three patterns and no rules."""
+
+    patterns = (
+        "01",
+        "01",
+        "-",
+        "AB",
+    )
+
+
+def test_generate_without_rules(db):
+    db.bind({Generator})
+    codes = []
+    for _ in range(8):
+        code = LittleGenerator.generate()
+        assert len(code) == 4
+        assert code[0] in "01"
+        assert code[1] in "01"
+        assert code[2] == "-"
+        assert code[3] in "AB"
+        assert code not in codes
+        codes.append(code)
+
+
+class PhoneNumberGenerator(RandomGenerator):
+
+    """A random phone generator.
+
+    A phone number shouldn't have more than twice the same digit in a row.
+
+    """
+
+    patterns = (
+        string.digits,
+        string.digits,
+        string.digits,
+        "-",
+        string.digits,
+        string.digits,
+        string.digits,
+        string.digits,
+    )
+
+    @classmethod
+    def is_allowed(cls, code: str) -> bool:
+        """Return whether this code is allowed (only check the end)."""
+        allowed = True
+        if len(code) >= 3:
+            last = code[-1]
+            allowed = not code.endswith(last * 3)
+
+        return allowed
+
+
+def test_generate_with_rules(db):
+    db.bind({Generator})
+    numbers = []
+    for _ in range(100):
+        number = PhoneNumberGenerator.generate()
+        assert number not in numbers
+        numbers.append(number)
+
+    for number in numbers:
+        for i, digit in enumerate(number):
+            assert not number[i:].startswith(digit * 3)

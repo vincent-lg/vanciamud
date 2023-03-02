@@ -8,11 +8,30 @@ class User(Node):
     name: str = "not yet"
 
 
+class Account(Node):
+
+    pass
+
+
 def test_create(db):
     db.bind({User})
     vincent = User.create(name="Vincent")
     assert vincent.id
     assert vincent.name == "Vincent"
+
+
+def test_count(db):
+    db.bind({User})
+    assert User.count() == 0
+
+
+def test_create_and_count(db):
+    db.bind({User, Account})
+    for i in range(3):
+        User.create(name=str(i))
+        Account.create()
+
+    assert User.count() == 3
 
 
 def test_create_and_retrieve_from_cache(db):
@@ -73,3 +92,14 @@ def test_create_and_delete_and_retrieve_From_db(db):
 
     with pytest.raises(ValueError):
         User.get(id=vincent.id)
+
+
+def test_create_and_get_all(db):
+    db.bind({User})
+    vincent = User.create(name="Vincent")
+    vanessa = User.create(name="Vanessa")
+    anthony = User.create(name="Anthony")
+    results = User.all()
+    assert vincent in results
+    assert vanessa in results
+    assert anthony in results

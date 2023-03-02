@@ -41,23 +41,24 @@ class DescriptionHandler(BaseHandler):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.text = ""
+        self._text = ""
 
     def __getstate__(self):
-        return self.text
+        return {key: value for key, value in self.__dict__.items() if key.startswith("_")}
 
-    def __setstate__(self, text):
-        self.text = text
+    def __setstate__(self, attrs):
+        self.__dict__.update(attrs)
 
     def __repr__(self) -> str:
-        return repr(self.text)
+        return repr(self._text)
 
     def __str__(self) -> str:
-        return self.text
+        return self._text
 
     def set(self, text: str) -> None:
         """Set the description and save it."""
-        self.text = text
+        self._text = text
+        self.save()
 
     def format(
         self,
@@ -86,7 +87,7 @@ class DescriptionHandler(BaseHandler):
 
         """
         vars = vars or {}
-        paragraphs = self.text.splitlines()
+        paragraphs = self._text.splitlines()
 
         for num_line, paragraph in enumerate(paragraphs):
             words = paragraph.split(" ")
@@ -143,7 +144,7 @@ class DescriptionHandler(BaseHandler):
             show_line_numbers (bool, optional): show paragraph line numbers.
 
         """
-        paragraphs = self.text.splitlines()
+        paragraphs = self._text.splitlines()
 
         if show_line_numbers:
             number_width = max(2, len(str(len(paragraphs))))
@@ -177,4 +178,4 @@ class DescriptionHandler(BaseHandler):
 
     def from_blueprint(self, text: str):
         """Recover the description from a blueprint."""
-        self.text = text
+        self._text = text

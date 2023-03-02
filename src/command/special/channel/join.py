@@ -52,10 +52,10 @@ class JoinChannel(ChannelCommand):
         """Join the channel."""
         character = self.character
         channel = self.channel
-        if character in channel.connected:
+        if character in channel.subscribers:
             self.msg(
                 f"You are already connected to the {channel.name} channel."
             )
         else:
-            channel.add_subscriber(character)
+            channel.subscribers.add(character)
             self.msg(f"You now are connected to the {channel.name} channel.")

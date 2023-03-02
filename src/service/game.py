@@ -90,7 +90,7 @@ class Service(BaseService):
         """Schedule all persistent delays."""
         now = datetime.utcnow()
         Delay._game_service = self
-        for persistent in DbDelay.repository.select(DbDelay.id > 0):
+        for persistent in DbDelay.select(DbDelay.table.id > 0):
             delta = persistent.expire_at - now
             seconds = delta.total_seconds()
             if seconds < 0:
@@ -151,7 +151,7 @@ class Service(BaseService):
         """A new game process wants to be registered."""
         self.logger.info(f"The game is now registered under ID {game_id}")
         self.game_id = game_id
-        # self.restore_delays()
+        self.restore_delays()
 
     async def handle_stop_game(self, origin: Origin, game_id: str):
         """Stop this game process."""
@@ -272,7 +272,9 @@ class Service(BaseService):
 
         """
         host = self.services["host"]
-        more = self.console.push(code)
+        data = self.data
+        with data.engine.session.begin():
+            more = self.console.push(code)
         prompt = "... " if more else ">>> "
 
         if host.writer:

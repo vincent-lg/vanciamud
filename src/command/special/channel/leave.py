@@ -50,10 +50,10 @@ class LeaveChannel(ChannelCommand):
         """Join the channel."""
         character = self.character
         channel = self.channel
-        if character not in channel.connected:
+        if character not in channel.subscribers:
             self.msg(f"You are not connected to the {channel.name} channel.")
         else:
-            channel.remove_subscriber(character)
+            channel.subscribers.discard(character)
             self.msg(
                 f"You now are disconnected from the {channel.name} channel."
             )

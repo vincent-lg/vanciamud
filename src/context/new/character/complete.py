@@ -29,7 +29,11 @@
 
 """Complete the character creation, a ghost context."""
 
+from dynaconf import settings
+
 from context.base import Context
+from data.character import Character
+from data.room import Room
 
 
 class Complete(Context):
@@ -40,7 +44,10 @@ class Complete(Context):
         """Leave this context at once."""
         account = self.session.db.account
         name = self.session.db.name
-        character = account.characters.append_new(name=name)
+        character = Character.create(name=name, account=account)
+        account.characters.append(character)
         self.msg(f"The character {name} has been created successfully.")
         self.session.db.character = character
+        room = Room.get(barcode=settings.START_ROOM, raise_not_found=False)
+        character.room = room
         self.move("character.login")

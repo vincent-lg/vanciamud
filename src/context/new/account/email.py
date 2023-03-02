@@ -90,8 +90,8 @@ class Email(Context):
 
         # Check that this email isn't already used.
         email = email.lower()
-        accounts = Account.repository.select(Account.email == email)
-        if accounts:
+        account = Account.get(email=email, raise_not_found=False)
+        if account:
             self.msg(
                 "This email address is in use, please choose another one."
             )

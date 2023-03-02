@@ -51,13 +51,18 @@ class ModelMetaclass(BaseModelMetaclass):
     engine = None
 
     def __new__(
-        metacls, name: str, bases: tuple[type], attrs: dict[str:Any]
-    ) -> None:
-        cls = super().__new__(metacls, name, bases, attrs)
-        ModelMetaclass.models.add(cls)
-        ModelMetaclass.paths[cls.class_path] = cls
-        cls.__config__.primary_keys = cls.get_primary_keys_from_class()
-        return cls
+        cls, name: str, bases: tuple[type], attrs: dict[str, Any]
+    ) -> type:
+        new_cls = super().__new__(cls, name, bases, attrs)
+        ModelMetaclass.models.add(new_cls)
+        ModelMetaclass.paths[new_cls.class_path] = new_cls
+        new_cls.__config__.primary_keys = new_cls.get_primary_keys_from_class()
+        new_cls.__config__.children = set()
+        base = new_cls.base_model
+        if base is not new_cls:
+            base.__config__.children.add(new_cls)
+
+        return new_cls
 
     @property
     def class_path(cls) -> str:
@@ -123,6 +128,36 @@ class ModelMetaclass(BaseModelMetaclass):
         base = cls.base_model
         return field.name in base.__fields__
 
+    def is_primary_key(cls, field: Field) -> bool:
+        """Return whether this field is a primary key.
+
+        Args:
+            field (Field): the field to test.
+
+
+        Returns:
+            primary_key (bool): whether this field is a primary key.
+
+        """
+        return field.field_info.extra.get("primary_key", False)
+
+    def is_external(cls, field: Field) -> bool:
+        """Return whether this field is external (stored in another table).
+
+        Args:
+            field (Field): the field to test.
+
+        Returns:
+            external (bool): whether this field is an external field or not.
+
+        """
+        if cls.is_primary_key(field):
+            external = False
+        else:
+            external = field.field_info.extra.get("external", False)
+
+        return external
+
     def create(cls, **kwargs):
         """Create a node and store it in the database.
 
@@ -140,6 +175,37 @@ class ModelMetaclass(BaseModelMetaclass):
         """Try to retrieve the object from storage."""
         return ModelMetaclass.engine.get_model(cls, **kwargs)
 
+    def all(cls) -> list["Model"]:
+        """Retrieve the list of all stored models.
+
+        WARNING:
+            Do this only if you are quite confident the table
+            isn't big or loading absolutely every row is necessary.
+            In doubt, prefer using `select` with a filter query.
+
+        Returns:
+            objects (list of Model): the list of all model objects.
+
+        """
+        return ModelMetaclass.engine.select_models(cls)
+
+    def count(cls, query: SQLRole | None = None) -> int:
+        """Retrieve the number of models, optionally following a filter.
+
+        Args:
+            query (SQLRole, optional): the query to filter with.
+
+        Returns:
+            number (int): the number of rows.
+
+        If the model isn't a first-class model (like a node),
+        perform the query on the parent table with an additional
+        filter to retrieve only rows that describe this specific
+        class.
+
+        """
+        return ModelMetaclass.engine.count_models(cls, query)
+
     def select(cls, query: SQLRole) -> list["Model"]:
         """Select several model objects from the database.
 
@@ -147,7 +213,6 @@ class ModelMetaclass(BaseModelMetaclass):
         preferably using the `Model.table` property.
 
         Args:
-            mode_class (subclass of Model): the model class.
             query (query): the SQL query object.
 
         Returns:

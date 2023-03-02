@@ -47,10 +47,21 @@ class ChannelHandler(BaseHandler):
         self._channels = set()
 
     def __getstate__(self):
-        return self._channels
+        return {key: value for key, value in self.__dict__.items() if key == "_channels"}
 
-    def __setstate__(self, channels):
-        self._channels = channels
+    def __setstate__(self, attrs):
+        self.__dict__.update(attrs)
+
+    @property
+    def subscribed(self):
+        """Return the set of channels this character is subscribed to."""
+        channels = set()
+        for path in self._channels:
+            channel = Channel.service.channels.get(path)
+            if channels is not None:
+                channels.add(channel)
+
+        return channels
 
     def add(self, channel: str | Channel):
         """Add a channel for this character.

@@ -35,7 +35,7 @@ is to simply route the user input to the character's context stack
 and display errors if necessary.
 
 Note:
-    this context can seem close to the "character.play" context,
+    This context can seem close to the "character.game" context,
     yet the two are really different: the "connection.game" context
     forwards to the character's command stack.  The "character.game"
     context, on the other hand, is the default active context on

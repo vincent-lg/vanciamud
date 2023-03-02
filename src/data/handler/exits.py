@@ -45,13 +45,13 @@ class ExitHandler(BaseHandler):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.exits = None
+        self._exits = None
 
     def __getstate__(self):
-        return self.exits
+        return {key: value for key, value in self.__dict__.items() if key.startswith("_")}
 
-    def __setstate__(self, exits):
-        self.exits = exits
+    def __setstate__(self, attrs):
+        self.__dict__.update(attrs)
 
     def __iter__(self):
         self.load_exits()
@@ -63,7 +63,7 @@ class ExitHandler(BaseHandler):
         self.load_exits()
         exits = []
         for direction in Direction:
-            exit = self.exits.get(direction)
+            exit = self._exits.get(direction)
             if exit:
                 exits.append(exit)
 
@@ -96,7 +96,7 @@ class ExitHandler(BaseHandler):
 
         """
         self.load_exits()
-        if self.exits.get(direction):
+        if self._exits.get(direction):
             raise ValueError(
                 f"an exit already exists in the direction: {direction}"
             )
@@ -104,12 +104,12 @@ class ExitHandler(BaseHandler):
         origin, _ = self.model
         exit = Exit.create(
             direction=direction,
-            origin=origin,
-            destination=destination,
+            origin_id=origin.id,
+            destination_id=destination_id,
             name=name,
             aliases=aliases,
         )
-        self.exits[direction] = exit
+        self._exits[direction] = exit
         self.save()
 
         if back:
@@ -124,10 +124,12 @@ class ExitHandler(BaseHandler):
 
     def load_exits(self):
         """Load, if necessary, this room's exit."""
-        if self.exits is None:
+        if self._exits is None:
             room, _ = self.model
-            query = (Exit.table.origin_id == room.id) & (
-                (Exit.table.destination_id.isnot(None))
+            query = (
+                (Exit.table.origin_id == room.id)
+                & (Exit.table.destination_id.isnot(None))
+                & (Exit.table.class_path == Exit.class_path)
             )
             exits = Exit.select(query)
-            self.exits = {exit.direction: exit for exit in exits}
+            self._exits = {exit.direction: exit for exit in exits}

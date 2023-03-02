@@ -103,7 +103,7 @@ class Service(BaseService):
 
     def get_session(self, session_id: UUID) -> Optional[Session]:
         """Return, if found, the stored session with this UUID."""
-        return Session.get(uuid=session_id)
+        return Session.get(uuid=session_id, raise_not_found=False)
 
     def delete_session(self, session_id: UUID) -> Optional[Session]:
         """Delete, if found, the stored session with this UUID."""

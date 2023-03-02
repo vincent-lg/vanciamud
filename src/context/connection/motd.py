@@ -54,5 +54,4 @@ class MOTD(Context):
     def refresh(self):
         """Leave this context at once."""
         super().refresh()
-        print("Before move")
         self.move("connection.home")

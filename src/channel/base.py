@@ -37,8 +37,9 @@ can also be altered.
 
 """
 
-from typing import Sequence, Union, TYPE_CHECKING
+from typing import Sequence, TYPE_CHECKING
 
+from channel.abc import ChannelMetaclass
 from command.base import Command
 from command.special.channel import JoinChannel, LeaveChannel, UseChannel
 from service.base import BaseService
@@ -47,7 +48,7 @@ if TYPE_CHECKING:
     from data.character import Character
 
 
-class Channel:
+class Channel(metaclass=ChannelMetaclass):
 
     """Base class for channels.
 
@@ -59,13 +60,12 @@ class Channel:
 
     """
 
-    alias: Union[str, Sequence[str]] = ()
+    alias: str | Sequence[str] = ()
     permissions: str = ""
     description: str = "not set"
 
     # Don't replace this attribute:
     service: BaseService
-    character = None
 
     @classmethod
     def can_access(cls, character: "Character") -> bool:
@@ -101,52 +101,6 @@ class Channel:
         Command.service.commands[f"+use_{cls.name}"] = use
 
     @classmethod
-    @property
-    def connected(cls):
-        """Return the characters connected to this channel."""
-        if (cached := getattr(cls, "_cached_connected", None)) is not None:
-            return cached
-
-        storage = cls.service.parent.data.engine
-        table = storage.tables["character"]
-        model = storage.models["character"]
-        connected = model.repository.select(
-            table.c.channels.contains(f" {cls.name} ")
-        )
-        cls._cached_connected = connected
-        return connected
-
-    @classmethod
-    def add_subscriber(cls, character: "Character"):
-        """Add a character to the channel, regardless of permissions.
-
-        Args:
-            character (Character): the character to add.
-
-        If needed, the channel's name will be added to the list
-        of channels this character currently has.
-
-        """
-        if character not in cls.connected:
-            cls._cached_connected.append(character)
-            character.channels.add(cls.name)
-
-    @classmethod
-    def remove_subscriber(cls, character: "Character"):
-        """Remove the character from the channel, regardless of permissions.
-
-        Args:
-            character (Character): the character to remove from this channel.
-
-        If needed, the channel's name will be remove from the list
-        of channels this character currently has.
-
-        """
-        if character in cls.connected:
-            cls._cached_connected.remove(character)
-            character.channels.discard(cls.name)
-
-    @classmethod
     def msg_from(cls, character: "Character", message: str):
         """Send the message to all connected subscribers.
 
@@ -155,7 +109,7 @@ class Channel:
             message (str: the message to be sent.
 
         """
-        for subscriber in cls.connected:
+        for subscriber in cls.subscribers:
             if subscriber is character:
                 subscriber.msg(f"[{cls.name}] You say: {message}")
             else:

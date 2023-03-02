@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,26 +27,19 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Complete the account creation, a ghost context."""
 
-from context.base import Context
-from data.account import Account
+"""Module containing the ChannelMetaclass class."""
+
+from typing import Any
 
 
-class Complete(Context):
+class ChannelMetaclass(type):
 
-    """Ghost context only displayed when the account can be created."""
+    """Channel metaclass."""
 
-    def refresh(self):
-        """Leave this context at once."""
-        username = self.session.db.username
-        password = self.session.db.password
-        email = self.session.db.email
-        account = Account.create(
-            username=username, hashed_password=password, email=email
-        )
-        self.msg(
-            f"The account {username} has been created successfully.  Welcome!"
-        )
-        self.session.db.account = account
-        self.move("character.choice")
+    def __new__(
+        cls, name: str, bases: tuple[type], attrs: dict[str, Any]
+    ) -> type:
+        new_cls = super().__new__(cls, name, bases, attrs)
+        new_cls.subscribers = set()
+        return new_cls

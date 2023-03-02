@@ -39,8 +39,5 @@ class Login(Context):
     def refresh(self):
         """Leave this context at once."""
         character = self.session.db.character
-        self.session.character = character
-        room = character.db.get("log_at", None)
-        if room:
-            room.characters.append(character)
+        self.session.login(character)
         self.move("connection.game")

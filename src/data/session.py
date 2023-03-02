@@ -34,10 +34,13 @@ from queue import Queue
 from typing import Optional, Union, TYPE_CHECKING
 from uuid import UUID
 
+from dynaconf import settings
+
 from context.base import CONTEXTS
 from data.base.model import Field, Model
 from data.decorators import lazy_property
 from data.handler.namespace import NamespaceHandler
+from data.room import Room
 
 if TYPE_CHECKING:
     from data.character import Character
@@ -94,6 +97,26 @@ class Session(Model):
 
         if isinstance(text, bytes):
             OUTPUT_QUEUE.put((self.uuid, text))
+
+    def login(self, character: "Character") -> None:
+        """Login to a character."""
+        self.character = character
+        character.session = self
+
+        # Place the character in a valid room, if at all possible.
+        room = character.room
+        if room is None:
+            room = Room.get(
+                barcode=settings.RETURN_ROOM, raise_not_found=False
+            )
+            character.room = room
+
+        if room:
+            character.location = room
+
+        # Place the character in its subscribed channels.
+        for channel in character.channels.subscribed:
+            channel.subscribers.add(character)
 
     def logout(self):
         """Prepare the session for logout."""

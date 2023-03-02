@@ -57,10 +57,10 @@ from contextlib import contextmanager
 from pathlib import Path
 import pickle
 from queue import Queue
-from typing import Any, Callable, Tuple, Type
+from typing import Any, Callable, Type, Union
 
 from pydantic import Field
-from sqlalchemy import create_engine, delete, event, insert, select, update
+from sqlalchemy import create_engine, delete, func, event, insert, select, update
 from sqlalchemy import Column, Index, UniqueConstraint
 from sqlalchemy import ForeignKey, Integer, LargeBinary, String
 from sqlalchemy.sql.roles import SQLRole
@@ -96,7 +96,7 @@ class SqliteEngine:
         self,
         file_name: str | Path | None = None,
         memory: bool = False,
-        logging: bool | Callable[[str, Tuple[Any]], None] = True,
+        logging: bool | Callable[[str, tuple[Any]], None] = True,
     ) -> None:
         """Initialize the data engine.
 
@@ -161,16 +161,16 @@ class SqliteEngine:
 
     def destroy(self):
         """Close and destroy the storage engine."""
-        for model in self.models.values():
-            if not model.is_first_class:
-                continue
+        tables = list(self.tables.values())
+        tables += list(self.attr_tables.values())
+        tables += list(self.iattr_tables.values())
+        tables = [table for table in tables if table.__tablename__[0].isupper()]
 
-            tables = self._get_three_tables(model)
-            for table in tables:
-                if table is not None:
-                    instance = self.metadata.tables[table.__tablename__]
-                    self.metadata.remove(instance)
-                    REGISTRY._dispose_cls(table)
+        for table in tables:
+            instance = self.metadata.tables.get(table.__tablename__)
+            if instance is not None:
+                self.metadata.remove(instance)
+                REGISTRY._dispose_cls(table)
         self.close()
         if self.file_name:
             self.file_name.unlink()
@@ -188,12 +188,23 @@ class SqliteEngine:
         # Force models without a clear base model to be set as first-class
         # models.
         models = []
+        names = {}
         for model in to_bind:
+            names[model.__name__] = model
             if getattr(model.__config__, "external_attrs", False):
                 for field in model.__fields__.values():
-                    info = field.field_info
-                    if not info.extra.get("primary_key", False):
-                        info.extra["external"] = True
+                    if model.is_base_field(field):
+                        continue
+
+                    if not model.is_primary_key(field):
+                        field.field_info.extra["external"] = True
+            else:
+                for field in model.__fields__.values():
+                    if model.is_primary_key(field):
+                        continue
+
+                    if not model.is_base_field(field):
+                        field.field_info.extra["external"] = True
 
             base_model = getattr(model.__config__, "base_model", "")
             path = model.class_path
@@ -210,13 +221,15 @@ class SqliteEngine:
                 continue
 
             setattr(model.__config__, "first_class", first_class)
-            if first_class:
-                models.append(model)
+            models.append(model)
 
         for model in models:
             self.bind_model(model)
 
         self.metadata.create_all(self.engine)
+
+        for model in names.values():
+            model.update_forward_refs(**names)
 
     def bind_model(self, model: Type[Model]) -> None:
         """Bind a new model, creating one or several tables.
@@ -234,16 +247,13 @@ class SqliteEngine:
         fields = {}
         external = indexed = False
         for key, field in model.__fields__.items():
-            info = field.field_info
-            external_attrs = getattr(model.__config__, "external_attrs", False)
-            pickle_field = info.extra.get("pickled", False)
-            if external_attrs or pickle_field:
+            if model.is_external(field):
                 external = True
-                if info.extra.get("unique", False):
+                if field.field_info.extra.get("unique", False):
                     indexed = True
             else:
                 column, kwargs = self.get_model_column(model, field)
-                if field.field_info.extra.get("primary_key", False):
+                if model.is_primary_key(field):
                     pkey_name = key
                     pkey_column = column
                     kwargs["primary_key"] = True
@@ -253,9 +263,15 @@ class SqliteEngine:
                 fields[key] = Column(column, **kwargs)
 
         model_name = model.__name__
-        fields["__tablename__"] = model_name
-        table = type(model_name, (BASE,), fields)
-        table.metadata = self.metadata
+        if model.base_model is model:
+            if model.__config__.children:
+                column, kwargs = self.get_model_column(model, str)
+                fields["class_path"] = Column(column, **kwargs)
+            fields["__tablename__"] = model_name
+            table = type(model_name, (BASE,), fields)
+            table.metadata = self.metadata
+        else:
+            table, *_ = self._get_three_tables(model.base_model)
         self._record_table(model, table)
 
         # If necessary, create the table to store external attributes.
@@ -267,14 +283,14 @@ class SqliteEngine:
                 "name": Column(String),
                 "value": Column(LargeBinary),
                 "model": Column(
-                    pkey_column, ForeignKey(f"{model_name}.{pkey_name}")
+                    pkey_column, ForeignKey(f"{table.__tablename__}.{pkey_name}")
                 ),
                 "uix_nn": UniqueConstraint("name", "model", name="uix_nn"),
                 "un_nn": Index("un_nn", "name", "model", unique=True),
             }
-            table = type(table_name, (BASE,), fields)
-            table.metadata = self.metadata
-            self._record_nattr(model, table)
+            nattr = type(table_name, (BASE,), fields)
+            nattr.metadata = self.metadata
+            self._record_nattr(model, nattr)
 
             # If there are external attributes to index.
             if indexed:
@@ -286,7 +302,7 @@ class SqliteEngine:
                     "value": Column(LargeBinary),
                     "class_path": Column(String),
                     "model": Column(
-                        pkey_column, ForeignKey(f"{model_name}.{pkey_name}")
+                        pkey_column, ForeignKey(f"{table.__tablename__}.{pkey_name}")
                     ),
                     "uix_inn": UniqueConstraint(
                         "name", "value", "class_path", name="uix_inn"
@@ -295,9 +311,9 @@ class SqliteEngine:
                         "un_inn", "name", "value", "class_path", unique=True
                     ),
                 }
-                table = type(table_name, (BASE,), fields)
-                table.metadata = self.metadata
-                self._record_inattr(model, table)
+                inattr = type(table_name, (BASE,), fields)
+                inattr.metadata = self.metadata
+                self._record_inattr(model, inattr)
 
     def clear_cache(self):
         """Clear all the engine's cache."""
@@ -317,7 +333,7 @@ class SqliteEngine:
             log(message, arguments)
 
     def get_model_column(
-        self, model: Type[Model], field: Field
+        self, model: Type[Model], field: Union[str, Field]
     ) -> tuple[TypeEngine, dict[str, Any]]:
         """Retrieve the column type for a given field.
 
@@ -326,7 +342,7 @@ class SqliteEngine:
 
         Args:
             model (subclass of Model): the model object.
-            field (Field): the field.
+            field (str or Field): the field.
 
         Returns:
             (column, kwargs): where `column` is a column type used in
@@ -334,7 +350,8 @@ class SqliteEngine:
                 to options.
 
         """
-        if column_data := SQL_TYPES.get(field.type_):
+        type_ = getattr(field, "type_", field)
+        if column_data := SQL_TYPES.get(type_):
             column, kwargs, *_ = column_data
             return (column, dict(kwargs))
 
@@ -387,13 +404,8 @@ class SqliteEngine:
         if nattr:
             for key, value in kwargs.items():
                 field = model_class.__fields__[key]
-                is_pk = field.field_info.extra.get("primary_key", False)
-                is_external = field.field_info.extra.get("external", False)
-                is_external = (
-                    is_external
-                    and not model_class.is_base_field(field)
-                    or False
-                )
+                is_pk = model_class.is_primary_key(field)
+                is_external = model_class.is_external(field)
                 if is_pk or not is_external:
                     continue
 
@@ -408,8 +420,8 @@ class SqliteEngine:
         if inattr:
             for key, value in kwargs.items():
                 field = model_class.__fields__[key]
-                is_pk = field.field_info.extra.get("primary_key", False)
-                is_external = field.field_info.extra.get("external", False)
+                is_pk = model_class.is_primary_key(field)
+                is_external = model_class.is_external(field)
                 is_unique = field.field_info.extra.get("unique", False)
                 if is_pk or not is_external or not is_unique:
                     continue
@@ -427,20 +439,15 @@ class SqliteEngine:
         kwargs.pop("class_path", None)
 
         with self._load_model():
-            model = self._prepare_model(model_class, kwargs)
+            model = model_class(**kwargs)
         self.cache.put(model)
 
         # Write the optional fields.
         if nattr:
             for key, value in model.__dict__.items():
                 field = model_class.__fields__[key]
-                is_pk = field.field_info.extra.get("primary_key", False)
-                is_external = field.field_info.extra.get("external", False)
-                is_external = (
-                    is_external
-                    and not model_class.is_base_field(field)
-                    or False
-                )
+                is_pk = model_class.is_primary_key(field)
+                is_external = model_class.is_external(field)
                 if not is_pk and is_external and key not in kwargs:
                     statement = insert(nattr).values(
                         name=key,
@@ -449,6 +456,7 @@ class SqliteEngine:
                     )
                     self.session.execute(statement)
 
+        self._prepare_model(model)
         return model
 
     def get_model(
@@ -476,11 +484,9 @@ class SqliteEngine:
         model = self.cache.get(model_class, **kwargs)
         if model is None:
             table, nattr, inattr = self._get_three_tables(model_class)
+            pkeys = model_class.get_primary_keys_from_attrs(kwargs)
             keys = model_class.get_primary_keys_and_uniques_from_attrs(kwargs)
-            where = [
-                getattr(table, key) == value for key, value in keys.items()
-            ]
-            if not keys and inattr:
+            if not pkeys and inattr:
                 statement = (
                     select(table, nattr)
                     .join_from(table, nattr)
@@ -493,11 +499,22 @@ class SqliteEngine:
                         & (inattr.value == pickle.dumps(value))
                     )
             elif nattr:
+                where = [
+                    getattr(table, key) == value for key, value in keys.items()
+                ]
                 statement = (
                     select(table, nattr).join_from(table, nattr).where(*where)
                 )
             else:
+                where = [
+                    getattr(table, key) == value for key, value in keys.items()
+                ]
                 statement = select(table).where(*where)
+
+            if not model_class.is_first_class:
+                statement = statement.where(
+                    table.class_path == model_class.class_path
+                )
 
             with self._load_model():
                 rows = self.session.execute(statement).all()
@@ -525,7 +542,7 @@ class SqliteEngine:
             attrs = self.as_attributes(model_class, attrs)
 
             with self._load_model():
-                model = self._prepare_model(model_class, attrs)
+                model = model_class(**attrs)
 
             self.cache.put(model)
 
@@ -539,21 +556,57 @@ class SqliteEngine:
                     with self._load_model():
                         setattr(model, attr.name, pickle.loads(attr.value))
 
+            self._prepare_model(model)
             return model
 
         return model
 
+    def count_models(
+        self, model_class: Type[Model], query: SQLRole | None = None
+    ) -> int:
+        """Retrieve the number of models, optionally following a filter.
+
+        Args:
+            model_class (subclass of Model): the model to retrieve.
+            query (SQLRole, optional): the query to filter with.
+
+        Returns:
+            number (int): the number of rows.
+
+        If the model isn't a first-class model (like a node),
+        perform the query on the parent table with an additional
+        filter to retrieve only rows that describe this specific
+        class.
+
+        """
+        table, nattr, inattr = self._get_three_tables(model_class)
+        if not model_class.is_first_class:
+            additional_filter = table.class_path == model_class.class_path
+            if query:
+                query &= additional_filter
+            else:
+                query = additional_filter
+
+        pkeys = model_class.get_primary_keys_from_class()
+        pkey_name = tuple(pkeys.keys())[0]
+        pkey = getattr(table, pkey_name)
+        statement = select(func.count(pkey))
+        if query is not None:
+            statement = statement.where(query)
+
+        return self.session.execute(statement).scalar_one()
+
     def select_models(
-        self, model_class: Type[Model], query: SQLRole
+        self, model_class: Type[Model], query: SQLRole | None = None
     ) -> list[Model]:
-        """Select several model objects from the database.
+        """Select several model objects with an optional query.
 
         The query has to be specified using the SQLAlchemy syntax,
         preferably using the `Model.table` property.
 
         Args:
             mode_class (subclass of Model): the model class.
-            query (query): the SQL query object.
+            query (query, optional): the SQL query object.
 
         Returns:
             results (list of models): a list of Model objects.
@@ -565,12 +618,21 @@ class SqliteEngine:
 
         """
         table, nattr, inattr = self._get_three_tables(model_class)
+
+        if not model_class.is_first_class:
+            additional_filter = table.class_path == model_class.class_path
+            if query:
+                query &= additional_filter
+            else:
+                query = additional_filter
+
         if nattr:
-            statement = (
-                select(table, nattr).join_from(table, nattr).where(query)
-            )
+            statement = select(table, nattr).join_from(table, nattr)
         else:
-            statement = select(table).where(query)
+            statement = select(table)
+
+        if query is not None:
+            statement = statement.where(query)
 
         with self._load_model():
             rows = self.session.execute(statement).all()
@@ -600,7 +662,7 @@ class SqliteEngine:
                 attrs = self.as_attributes(model_class, attrs)
 
                 with self._load_model():
-                    model = self._prepare_model(model_class, attrs)
+                    model = model_class(**attrs)
 
                 self.cache.put(model)
 
@@ -609,6 +671,7 @@ class SqliteEngine:
                 with self._load_model():
                     setattr(model, attr.name, pickle.loads(attr.value))
 
+            self._prepare_model(model)
             if model not in models:
                 models.append(model)
 
@@ -629,22 +692,28 @@ class SqliteEngine:
             info = field.field_info
             path = cls.class_path
             table, nattr, inattr = self._get_three_tables(cls)
-            external_attrs = (
-                not info.extra.get("primary_ke", False)
-                and getattr(cls.__config__, "external_attrs", False)
-                or False
-            )
-            pickle_field = info.extra.get("pickled", False)
+            is_external = cls.is_external(field)
             pkey = cls.get_primary_key_from_model(model)
             if cls.is_base_field(field):
                 nattr = None
 
-            if nattr and (external_attrs or pickle_field):
+            if nattr and is_external:
                 statement = (
-                    update(nattr)
+                    select(func.count(nattr.id))
                     .where((nattr.name == key) & (nattr.model == pkey))
-                    .values(value=pickle.dumps(value))
                 )
+                number = self.session.execute(statement).scalar_one()
+                if number == 0:
+                    statement = (
+                        insert(nattr)
+                        .values(name=key, model=pkey, value=value)
+                    )
+                else:
+                    statement = (
+                        update(nattr)
+                        .where((nattr.name == key) & (nattr.model == pkey))
+                        .values(value=pickle.dumps(value))
+                    )
             else:
                 pkeys = self.as_fields(
                     cls, cls.get_primary_keys_from_model(model)
@@ -713,13 +782,8 @@ class SqliteEngine:
         pkey = cls.get_primary_key_from_model(model)
         field = cls.__fields__[key]
         info = field.field_info
-        external_attrs = (
-            not info.extra.get("primary_key", False)
-            and getattr(cls.__config__, "external_attrs", False)
-            or False
-        )
-        pickle_field = info.extra.get("pickled", False)
-        if external_attrs or pickle_field:
+        is_external = cls.is_external(field)
+        if isexternal:
             statement = select(nattr.value).where(
                 (nattr.name == key) & (nattr.model == pkey)
             )
@@ -766,7 +830,8 @@ class SqliteEngine:
         while not model_classes.empty():
             model_class = model_classes.get()
             path = model_class.class_path
-            self.tables[path] = table
+            if path not in self.tables:
+                self.tables[path] = table
 
             if model_class is base:
                 continue
@@ -782,7 +847,8 @@ class SqliteEngine:
         while not model_classes.empty():
             model_class = model_classes.get()
             path = model_class.class_path
-            self.attr_tables[path] = table
+            if path not in self.attr_tables:
+                self.attr_tables[path] = table
 
             if model_class is base:
                 continue
@@ -798,7 +864,8 @@ class SqliteEngine:
         while not model_classes.empty():
             model_class = model_classes.get()
             path = model_class.class_path
-            self.iattr_tables[path] = table
+            if path not in self.iattr_tables:
+                self.iattr_tables[path] = table
 
             if model_class is base:
                 continue
@@ -866,12 +933,9 @@ class SqliteEngine:
         return attributes
 
     @staticmethod
-    def _prepare_model(
-        model_class: Type[Model], attributes: dict[str, Any]
-    ) -> Model:
-        model = model_class(**attributes)
+    def _prepare_model(model: Type[Model]) -> None:
         for key, value in model.__dict__.items():
             if isinstance(value, BaseHandler):
                 value.model = (model, key)
-
-        return model
+                if key == "exits":
+                    print("set exits", model.id, id(value))

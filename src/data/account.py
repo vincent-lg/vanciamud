@@ -46,6 +46,7 @@ from dynaconf import settings
 from pydantic import EmailStr
 
 from data.base.model import Field, Model
+from data.handler.namespace import NamespaceHandler
 
 if TYPE_CHECKING:
     from data.character import Character
@@ -61,6 +62,7 @@ class Account(Model):
     email: EmailStr | None = Field(None, unique=True)
     created_on: datetime = Field(default_factory=datetime.utcnow)
     updated_on: datetime = Field(default_factory=datetime.utcnow)
+    db: NamespaceHandler = Field(default_factory=NamespaceHandler)
     characters: list["Character"] = Field(default_factory=list)
 
     @staticmethod

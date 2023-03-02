@@ -38,7 +38,8 @@ class BaseHandler:
 
     def __setattr__(self, key: str, value: any) -> None:
         object.__setattr__(self, key, value)
-        self.save()
+        if key != "model" and not key.startswith("_"):
+            self.save()
 
     def save(self):
         """Save the handler in its owner."""

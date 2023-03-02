@@ -16,6 +16,19 @@ def test_create(db):
     assert vincent.name == "Vincent"
 
 
+def test_count(db):
+    db.bind({User})
+    assert User.count() == 0
+
+
+def test_create_and_count(db):
+    db.bind({User})
+    for i in range(3):
+        User.create(name=str(i))
+
+    assert User.count() == 3
+
+
 def test_create_and_retrieve_from_cache(db):
     db.bind({User})
     vincent = User.create(name="Vincent")
@@ -81,6 +94,17 @@ class Person(Model):
     id: int = Field(primary_key=True)
     name: str
     age: int
+
+
+def test_create_and_get_all(db):
+    db.bind({Person})
+    vincent = Person.create(name="Vincent", age=34)
+    vanessa = Person.create(name="Vanessa", age=28)
+    anthony = Person.create(name="Anthony", age=33)
+    results = Person.all()
+    assert vincent in results
+    assert vanessa in results
+    assert anthony in results
 
 
 def test_create_and_select_with_cache(db):

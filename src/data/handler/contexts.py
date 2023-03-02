@@ -40,26 +40,20 @@ class ContextHandler(BaseHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._contexts = []
-        self._default_context = None
 
     def __getstate__(self):
-        return (self._contexts, self._default_context)
+        return {key: value for key, value in self.__dict__.items() if key.startswith("_")}
 
-    def __setattr__(self, saved):
-        (self._contexts, self._default_context) = saved
+    def __setstate__(self, attrs):
+        self.__dict__.update(attrs)
 
     @property
     def active(self):
         """Return the active context."""
-        try:
-            index = self.index(...)
-        except ValueError:
-            return self._default_context
+        self._put_at_least_one()
+        index = self._contexts.index(...)
 
         # Ellipsis is before the active context.
-        if index + 1 >= len(self._contexts):
-            return self._default_context
-
         return self._contexts[index + 1]
 
     def add(
@@ -83,12 +77,21 @@ class ContextHandler(BaseHandler):
                     `enter` method, which might display text.
 
         """
+        self._put_at_least_one()
         context_cls = CONTEXTS.get(context_path)
         if context_cls is None:
             raise ValueError(f"can't find this context: {context_path!r}")
 
         # Create the new context, so an exception wouldn't save anything.
-        new_context = context_cls(self.parent.session, options)
+        character, _ = self.model
+        if character is None:
+            raise ValueError("no character defined for this context stack")
+
+        session = character.session
+        if session is None:
+            raise ValueError("no session linked with this character")
+
+        new_context = context_cls(session, options)
 
         # Call `enter`.
         if not silent:
@@ -127,17 +130,13 @@ class ContextHandler(BaseHandler):
         If no context match, raise a ValueError exception.
 
         """
+        self._put_at_least_one()
         if context in self._contexts:
             if not silent:
                 context.leave()
 
             index = self._contexts.index(context)
             del self._contexts[index]
-
-            # If the last context is active, remove the ellipsis.
-            if self._contexts[-1] is ...:
-                self._contexts.pop()
-
             self.save()
         else:
             raise ValueError("this context isn't present in the context stack")
@@ -155,3 +154,12 @@ class ContextHandler(BaseHandler):
         """
         active = self.active
         return active.handle_input(user_input)
+
+    def _put_at_least_one(self):
+        if not self._contexts:
+            context_cls = CONTEXTS["character.game"]
+            character, _ = self.model
+            new_context = context_cls(character.session)
+            self._contexts.insert(0, new_context)
+            self._contexts.insert(0, ...)
+            object.__setattr__(self, "_default_context", new_context)

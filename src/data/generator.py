@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,26 +27,21 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Complete the account creation, a ghost context."""
+"""Generator DB model.
 
-from context.base import Context
-from data.account import Account
+A random generator can be used to generate random unique combinationsn.
+Use the `tools.generator` module to create and manipulate one.
+
+"""
+
+from data.base.model import Field, Model
 
 
-class Complete(Context):
+class Generator(Model):
 
-    """Ghost context only displayed when the account can be created."""
+    """A stored random generator."""
 
-    def refresh(self):
-        """Leave this context at once."""
-        username = self.session.db.username
-        password = self.session.db.password
-        email = self.session.db.email
-        account = Account.create(
-            username=username, hashed_password=password, email=email
-        )
-        self.msg(
-            f"The account {username} has been created successfully.  Welcome!"
-        )
-        self.session.db.account = account
-        self.move("character.choice")
+    id: int = Field(primary_key=True)
+    name: str
+    current: str
+    next: str

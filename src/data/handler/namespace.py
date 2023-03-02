@@ -45,10 +45,10 @@ class NamespaceHandler(BaseHandler):
         self._data = {}
 
     def __getstate__(self):
-        return self._data
+        return {key: value for key, value in self.__dict__.items() if key.startswith("_")}
 
-    def __setstate__(self, data):
-        self._data = data
+    def __setstate__(self, attrs):
+        self.__dict__.update(attrs)
 
     def __getattr__(self, key):
         if key == "model" or key.startswith("_"):

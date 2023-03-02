@@ -45,13 +45,13 @@ class LocationHandler(BaseHandler):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.stackables = defaultdict(int)
+        self._stackables = defaultdict(int)
 
     def __getstate__(self):
-        return self.stackables
+        return {key: value for key, value in self.__dict__.items() if key.startswith("_")}
 
-    def __setstate__(self, stackables):
-        self.stackables = stackables
+    def __setstate__(self, attrs):
+        self.__dict__.update(attrs)
 
     @property
     def contents(self):
@@ -72,7 +72,7 @@ class LocationHandler(BaseHandler):
 
         """
         if self.is_stackable(content):
-            quantity = self.stackables.get(content.id, 0)
+            quantity = self._stackables.get(content.id, 0)
         else:
             quantity = 1 if content in self.contents else 0
 
@@ -145,7 +145,7 @@ class LocationHandler(BaseHandler):
             # Remove the quantity from the content first.
             quantity = origin.locator.remove(content, quantity)
             if quantity > 0:
-                self.stackables[content.id] += quantity
+                self._stackables[content.id] += quantity
                 self.save()
         else:
             type(model).engine.locator.move(content, model.id)
@@ -162,7 +162,7 @@ class LocationHandler(BaseHandler):
 
         """
         if self.is_stackable(content):
-            self.stackables[content.id] += quantity
+            self._stackables[content.id] += quantity
             self.save()
         else:
             raise ValueError(f"the node[{content.id}] isn't stackable")
@@ -179,13 +179,13 @@ class LocationHandler(BaseHandler):
         be removed.
 
         """
-        current = self.stackables.get(content.id)
+        current = self._stackables.get(content.id)
         if current:
             if quantity >= current:
                 quantity = current
-                self.stackables.pop(content.id)
+                self._stackables.pop(content.id)
             else:
-                self.stackables[content.id] = current - quantity
+                self._stackables[content.id] = current - quantity
 
             self.save()
         else:

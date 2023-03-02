@@ -58,7 +58,7 @@ class UseChannel(ChannelCommand):
             character (Character): the character to run this command.
 
         """
-        return character in cls.channel.connected
+        return character in cls.channel.subscribers
 
     def run(self, message):
         """Join the channel."""

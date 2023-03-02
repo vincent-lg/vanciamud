@@ -41,10 +41,10 @@ class PermissionHandler(BaseHandler):
         self._permissions = set()
 
     def __getstate__(self):
-        return self._permissions
+        return {key: value for key, value in self.__dict__.items() if key.startswith("_")}
 
-    def __setstate__(self, permissions):
-        self._permissions = permissions
+    def __setstate__(self, attrs):
+        self.__dict__.update(attrs)
 
     def add(self, permission: str):
         """Add permissions.
@@ -53,7 +53,7 @@ class PermissionHandler(BaseHandler):
             permission (str): the permission to add.
 
         """
-        if permission not in self:
+        if permission not in self._permissions:
             self._permissions.add(permission)
             self.save()
 

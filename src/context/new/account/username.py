@@ -74,9 +74,9 @@ class Username(Context):
             return
 
         # Check that the username isn't a forbidden name.
-        accounts = Account.repository.select(Account.username == username)
+        account = Account.get(username=username, raise_not_found=False)
         forbidden = [name.lower() for name in settings.FORBIDDEN_USERNAMES]
-        if username in forbidden or accounts:
+        if username in forbidden or account:
             self.msg(
                 f"The username {username!r} is forbidden.  Please "
                 "choose another one."

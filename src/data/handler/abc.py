@@ -36,6 +36,16 @@ class BaseHandler:
 
     """Base class for all handlers."""
 
+    def __getstate__(self):
+        return {
+            key: value
+            for key, value in self.__dict__.items()
+            if key.startswith("_")
+        }
+
+    def __setstate__(self, attrs):
+        self.__dict__.update(attrs)
+
     def __setattr__(self, key: str, value: any) -> None:
         object.__setattr__(self, key, value)
         if key != "model" and not key.startswith("_"):

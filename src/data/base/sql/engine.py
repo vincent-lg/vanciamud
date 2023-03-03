@@ -60,7 +60,15 @@ from queue import Queue
 from typing import Any, Callable, Type, Union
 
 from pydantic import Field
-from sqlalchemy import create_engine, delete, func, event, insert, select, update
+from sqlalchemy import (
+    create_engine,
+    delete,
+    func,
+    event,
+    insert,
+    select,
+    update,
+)
 from sqlalchemy import Column, Index, UniqueConstraint
 from sqlalchemy import ForeignKey, Integer, LargeBinary, String
 from sqlalchemy.sql.roles import SQLRole
@@ -164,7 +172,9 @@ class SqliteEngine:
         tables = list(self.tables.values())
         tables += list(self.attr_tables.values())
         tables += list(self.iattr_tables.values())
-        tables = [table for table in tables if table.__tablename__[0].isupper()]
+        tables = [
+            table for table in tables if table.__tablename__[0].isupper()
+        ]
 
         for table in tables:
             instance = self.metadata.tables.get(table.__tablename__)
@@ -283,7 +293,8 @@ class SqliteEngine:
                 "name": Column(String),
                 "value": Column(LargeBinary),
                 "model": Column(
-                    pkey_column, ForeignKey(f"{table.__tablename__}.{pkey_name}")
+                    pkey_column,
+                    ForeignKey(f"{table.__tablename__}.{pkey_name}"),
                 ),
                 "uix_nn": UniqueConstraint("name", "model", name="uix_nn"),
                 "un_nn": Index("un_nn", "name", "model", unique=True),
@@ -302,7 +313,8 @@ class SqliteEngine:
                     "value": Column(LargeBinary),
                     "class_path": Column(String),
                     "model": Column(
-                        pkey_column, ForeignKey(f"{table.__tablename__}.{pkey_name}")
+                        pkey_column,
+                        ForeignKey(f"{table.__tablename__}.{pkey_name}"),
                     ),
                     "uix_inn": UniqueConstraint(
                         "name", "value", "class_path", name="uix_inn"
@@ -694,19 +706,14 @@ class SqliteEngine:
             table, nattr, inattr = self._get_three_tables(cls)
             is_external = cls.is_external(field)
             pkey = cls.get_primary_key_from_model(model)
-            #if cls.is_base_field(field):
-            #    nattr = None
-
             if nattr and is_external:
-                statement = (
-                    select(func.count(nattr.id))
-                    .where((nattr.name == key) & (nattr.model == pkey))
+                statement = select(func.count(nattr.id)).where(
+                    (nattr.name == key) & (nattr.model == pkey)
                 )
                 number = self.session.execute(statement).scalar_one()
                 if number == 0:
-                    statement = (
-                        insert(nattr)
-                        .values(name=key, model=pkey, value=value)
+                    statement = insert(nattr).values(
+                        name=key, model=pkey, value=value
                     )
                 else:
                     statement = (
@@ -781,9 +788,8 @@ class SqliteEngine:
         table, nattr, inattr = self._get_three_tables(cls)
         pkey = cls.get_primary_key_from_model(model)
         field = cls.__fields__[key]
-        info = field.field_info
         is_external = cls.is_external(field)
-        if isexternal:
+        if is_external:
             statement = select(nattr.value).where(
                 (nattr.name == key) & (nattr.model == pkey)
             )

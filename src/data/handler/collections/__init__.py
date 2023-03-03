@@ -33,4 +33,4 @@ These are abstractions from collections implementing autosave.
 
 """
 
-from data.handler.collections.list import List
+from data.handler.collections.list import List  # noqa: F401

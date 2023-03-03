@@ -6,7 +6,7 @@ Feature: test the new.account.email context
     And the user inputs 'ISee4Manatees'
     And the user inputs 'ISee4Manatees'
     And the user inputs 'kredh@mail.com'
-    Then the session is on the 'new.character.name' context
+    Then the session is on the 'new.player.name' context
     And an account exists with username 'administrator' and password 'ISee4Manatees' and email 'kredh@mail.com'
 
   Scenario: enter a non-valid email address
@@ -23,5 +23,5 @@ Feature: test the new.account.email context
     And the user inputs 'ISee4Manatees'
     And the user inputs 'ISee4Manatees'
     And the user inputs 'no'
-    Then the session is on the 'new.character.name' context
+    Then the session is on the 'new.player.name' context
     And an account exists with username 'administrator' and password 'ISee4Manatees' and no email

@@ -44,9 +44,11 @@ from sqlalchemy import (
     String,
 )
 
+
 def str_or_none(value: Any | None) -> str | None:
     """Convert value to str if not None."""
     return str(value) if value is not None else None
+
 
 SQL_TYPES = {
     bool: (Boolean, {}, ..., ...),

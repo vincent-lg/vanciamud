@@ -27,63 +27,56 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Display the meny to connect to a character."""
+"""Create a player name, first process in player creation."""
+
+from dynaconf import settings
 
 from context.base import Context
 
 
-class Choice(Context):
+class Name(Context):
 
-    """Context displayed when the user has entered the account's password.
+    """Context displayed when the user has entered 'c' in player.choice.
 
     Input:
-        <number>: a character's number.
-        /: slash, go back to connection.home.
+        <new name>: the name of the character to create.
+        /: slash, go back to player.choice.
 
     """
 
-    prompt = "Your choice:"
+    prompt = "Your new character's name:"
+    text = """
+        New character.
 
-    def refresh(self):
-        """When entering the context."""
-        # Move to create a character if none exists in this account.
-        account = self.session.db.account
-        if not account.players:
-            self.move("new.character.name")
-        else:
-            super().refresh()
+        You have to enter the name of your new character.  This name
+        will be visible to other characters (and players) in the game.
+    """
 
-    def greet(self):
-        """Return the text to display."""
-        account = self.session.db.account
-        lines = [
-            f"Welcome to your account, {account.username}!",
-            "Please enter one of the following choices:",
-        ]
-
-        i = 1
-        for player in account.players:
-            lines.append(
-                f"  {i:>2} to connect to the character {player.name}."
-            )
-            i += 1
-
-        lines.append("  C to create a new character in this account.")
-        return "\n".join(lines)
-
-    def input_c(self):
-        """Create a new character in this account."""
-        self.move("new.character.name")
-
-    def other_input(self, user_input: str):
+    def other_input(self, name: str):
         """The user entered something else."""
-        account = self.session.db.account
-        i = 1
-        for player in account.players:
-            if user_input == str(i):
-                self.session.db.character = player
-                self.move("character.login")
-                return True
-            i += 1
+        name = name.strip()
+        name = name[0].upper() + name[1:].lower()
+        min_size = settings.MIN_CHARACTER_NAME
 
-        self.msg("This is not a valid option.")
+        # Check that the name isn't too short.
+        if len(name) < min_size:
+            self.msg(
+                f"The name {name!r} is incorrect.  It should be "
+                f"at least {min_size} characters in length.  "
+                "Please try again."
+            )
+            return
+
+        # Check that the username isn't a forbidden name.
+        forbidden = [
+            name.lower() for name in settings.FORBIDDEN_CHARACTER_NAMES
+        ]
+        if name.lower() in forbidden:
+            self.msg(
+                f"The name {name!r} is forbidden.  Please "
+                "choose another one."
+            )
+            return
+
+        self.session.db.name = name
+        self.move("new.player.complete")

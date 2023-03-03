@@ -64,7 +64,7 @@ class Password(Context):
             self.call_in(3, self.allow_new_password, account)
             return
 
-        self.move("character.choice")
+        self.move("player.choice")
 
     def allow_new_password(self, account):
         """Allow to enter a new password."""

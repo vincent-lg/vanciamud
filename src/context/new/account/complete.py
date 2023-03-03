@@ -49,4 +49,4 @@ class Complete(Context):
             f"The account {username} has been created successfully.  Welcome!"
         )
         self.session.db.account = account
-        self.move("character.choice")
+        self.move("player.choice")

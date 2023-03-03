@@ -7,12 +7,12 @@ from data.player import Player
 
 @given(
     "an account with the username '{username}' "
-    "and password '{password}' and {characters:d} characters"
+    "and password '{password}' and {players:d} players"
 )
-def step_impl(context, username, password, characters):
+def step_impl(context, username, password, players):
     account = _create_account(username, password)
 
-    for _ in range(characters):
+    for _ in range(players):
         account.players.append(Player.create(account=account))
 
     context.account = account

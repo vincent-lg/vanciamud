@@ -46,12 +46,6 @@ class ChannelHandler(BaseHandler):
         super().__init__(*args, **kwargs)
         self._channels = set()
 
-    def __getstate__(self):
-        return {key: value for key, value in self.__dict__.items() if key == "_channels"}
-
-    def __setstate__(self, attrs):
-        self.__dict__.update(attrs)
-
     @property
     def subscribed(self):
         """Return the set of channels this character is subscribed to."""

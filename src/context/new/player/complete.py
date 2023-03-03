@@ -27,17 +27,31 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Login ghost contect, redirect to connection.game immediately."""
+"""Complete the player creation, a ghost context."""
+
+from dynaconf import settings
 
 from context.base import Context
+from data.player import Player
+from data.room import Room
 
 
-class Login(Context):
+class Complete(Context):
 
-    """Ghost contect, redirect t connection.game."""
+    """Ghost context only displayed when the player can be created."""
 
     def refresh(self):
         """Leave this context at once."""
-        character = self.session.db.character
-        self.session.login(character)
-        self.move("connection.game")
+        account = self.session.db.account
+        name = self.session.db.name
+        player = Player.create(name=name, account=account)
+        account.players.append(player)
+
+        if Player.count() == 1:
+            player.permissions.add("admin")
+
+        self.msg(f"The character {name} has been created successfully.")
+        self.session.db.character = player
+        room = Room.get(barcode=settings.START_ROOM, raise_not_found=False)
+        player.room = room
+        self.move("player.login")

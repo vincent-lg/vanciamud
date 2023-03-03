@@ -47,12 +47,6 @@ class ExitHandler(BaseHandler):
         super().__init__(*args, **kwargs)
         self._exits = None
 
-    def __getstate__(self):
-        return {key: value for key, value in self.__dict__.items() if key.startswith("_")}
-
-    def __setstate__(self, attrs):
-        self.__dict__.update(attrs)
-
     def __iter__(self):
         self.load_exits()
         return iter(self.all)
@@ -105,7 +99,7 @@ class ExitHandler(BaseHandler):
         exit = Exit.create(
             direction=direction,
             origin_id=origin.id,
-            destination_id=destination_id,
+            destination_id=destination.id,
             name=name,
             aliases=aliases,
         )
@@ -126,10 +120,8 @@ class ExitHandler(BaseHandler):
         """Load, if necessary, this room's exit."""
         if self._exits is None:
             room, _ = self.model
-            query = (
-                (Exit.table.origin_id == room.id)
-                & (Exit.table.destination_id.isnot(None))
-                & (Exit.table.class_path == Exit.class_path)
+            query = (Exit.table.origin_id == room.id) & (
+                Exit.table.destination_id.isnot(None)
             )
             exits = Exit.select(query)
             self._exits = {exit.direction: exit for exit in exits}

@@ -207,12 +207,12 @@ class RandomGenerator:
 
     @classmethod
     def _save_trail(cls, trail: list[tuple[str, set[str]]]) -> None:
-        previous = True
         for code, choices in reversed(trail):
             pattern = cls.patterns[len(code)]
 
             if len(pattern) > 1:
-                # That is forbidden.  But only if there are more than one patterns (otherwise, it's not necessary).
+                # That is forbidden.  But only if there are more than
+                # one patterns (otherwise, it's not necessary).
                 choices = "".join(sorted(choices))
                 exists = Generator.select(
                     (Generator.table.name == cls.__name__)
@@ -221,7 +221,9 @@ class RandomGenerator:
                 if exists:
                     exists[0].next = choices
                 else:
-                    Generator.create(name=cls.__name__, current=code, next=choices)
+                    Generator.create(
+                        name=cls.__name__, current=code, next=choices
+                    )
 
             if choices:
                 break

@@ -31,6 +31,7 @@
 
 from data.character import Character
 
+
 class NPC(Character):
 
     """A playing character."""

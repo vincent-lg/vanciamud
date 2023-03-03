@@ -27,31 +27,63 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Complete the character creation, a ghost context."""
-
-from dynaconf import settings
+"""Display the meny to choose a character from an account."""
 
 from context.base import Context
-from data.player import Player
-from data.room import Room
 
 
-class Complete(Context):
+class Choice(Context):
 
-    """Ghost context only displayed when the character can be created."""
+    """Context displayed when the user enters the correct's account's password.
+
+    Input:
+        <number>: a player's number.
+        /: slash, go back to connection.home.
+
+    """
+
+    prompt = "Your choice:"
 
     def refresh(self):
-        """Leave this context at once."""
+        """When entering the context."""
+        # Move to create a player if none exists in this account.
         account = self.session.db.account
-        name = self.session.db.name
-        player = Player.create(name=name, account=account)
-        account.players.append(player)
+        if not account.players:
+            self.move("new.player.name")
+        else:
+            super().refresh()
 
-        if Player.count() == 1:
-            player.permissions.add("admin")
+    def greet(self):
+        """Return the text to display."""
+        account = self.session.db.account
+        lines = [
+            f"Welcome to your account, {account.username}!",
+            "Please enter one of the following choices:",
+        ]
 
-        self.msg(f"The character {name} has been created successfully.")
-        self.session.db.character = player
-        room = Room.get(barcode=settings.START_ROOM, raise_not_found=False)
-        player.room = room
-        self.move("character.login")
+        i = 1
+        for player in account.players:
+            lines.append(
+                f"  {i:>2} to connect to the character {player.name}."
+            )
+            i += 1
+
+        lines.append("  C to create a new character in this account.")
+        return "\n".join(lines)
+
+    def input_c(self):
+        """Create a new player in this account."""
+        self.move("new.player.name")
+
+    def other_input(self, user_input: str):
+        """The user entered something else."""
+        account = self.session.db.account
+        i = 1
+        for player in account.players:
+            if user_input == str(i):
+                self.session.db.character = player
+                self.move("player.login")
+                return True
+            i += 1
+
+        self.msg("This is not a valid option.")

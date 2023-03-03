@@ -41,12 +41,6 @@ class ContextHandler(BaseHandler):
         super().__init__(*args, **kwargs)
         self._contexts = []
 
-    def __getstate__(self):
-        return {key: value for key, value in self.__dict__.items() if key.startswith("_")}
-
-    def __setstate__(self, attrs):
-        self.__dict__.update(attrs)
-
     @property
     def active(self):
         """Return the active context."""

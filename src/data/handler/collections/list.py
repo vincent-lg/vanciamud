@@ -35,8 +35,8 @@ These are abstractions from collections implementing autosave.
 
 from data.handler.abc import BaseHandler
 
-class List(list, BaseHandler):
 
+class List(list, BaseHandler):
     def __setitem__(self, index, item):
         super().__setitem__(index, item)
         self.save()

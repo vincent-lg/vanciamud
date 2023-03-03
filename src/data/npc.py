@@ -1,4 +1,4 @@
-# Copyright (c) 2021, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,45 +27,12 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Character storage model."""
+"""Non-Player character (NPC)."""
 
-from typing import Optional, TYPE_CHECKING
+from data.character import Character
 
-from data.base.node import Field, Node
-from data.handler.channels import ChannelHandler
-from data.handler.contexts import ContextHandler
-from data.handler.permissions import PermissionHandler
+class NPC(Character):
 
-if TYPE_CHECKING:
-    from data.room import Room
-    from data.session import Session
+    """A playing character."""
 
-
-class Character(Node):
-
-    """Character storage model."""
-
-    id: int = Field(primary_key=True)
-    name: str = "unknown"
-    contexts: ContextHandler = Field(default_factory=ContextHandler)
-    permissions: PermissionHandler = Field(default_factory=PermissionHandler)
-    channels: ChannelHandler = Field(default_factory=ChannelHandler)
-    room: Optional["Room"] = None
-    session: Optional["Session"] = None
-
-    def msg(self, text: str | bytes) -> None:
-        """Send text to this session.
-
-        This method will contact the session on the portal protocol.
-        Hence, it will write this message in a queue, since it
-        would be preferable to group messages before a prompt,
-        if this is supported.
-
-        Args:
-            text (str or bytes): the text, already encoded or not.
-
-        If the text is not yet encoded, use the session's encoding.
-
-        """
-        if session := self.session:
-            session.msg(text)
+    pass

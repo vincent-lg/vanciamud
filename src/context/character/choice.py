@@ -48,7 +48,7 @@ class Choice(Context):
         """When entering the context."""
         # Move to create a character if none exists in this account.
         account = self.session.db.account
-        if not account.characters:
+        if not account.players:
             self.move("new.character.name")
         else:
             super().refresh()
@@ -62,9 +62,9 @@ class Choice(Context):
         ]
 
         i = 1
-        for character in account.characters:
+        for player in account.players:
             lines.append(
-                f"  {i:>2} to connect to the character {character.name}."
+                f"  {i:>2} to connect to the character {player.name}."
             )
             i += 1
 
@@ -79,9 +79,9 @@ class Choice(Context):
         """The user entered something else."""
         account = self.session.db.account
         i = 1
-        for character in account.characters:
+        for player in account.players:
             if user_input == str(i):
-                self.session.db.character = character
+                self.session.db.character = player
                 self.move("character.login")
                 return True
             i += 1

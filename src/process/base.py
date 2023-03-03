@@ -233,7 +233,6 @@ class Process(metaclass=ABCMeta):
         except asyncio.CancelledError:
             pass
         except KeyboardInterrupt:
-            print("ki")
             self.should_stop.set()
         finally:
             loop.run_until_complete(self.stop())

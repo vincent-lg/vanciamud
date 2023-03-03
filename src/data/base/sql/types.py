@@ -30,8 +30,10 @@
 """SQL types."""
 
 from datetime import date, datetime
+from typing import Any
 from uuid import UUID
 
+from pydantic import EmailStr
 from sqlalchemy import (
     Boolean,
     Date,
@@ -42,11 +44,16 @@ from sqlalchemy import (
     String,
 )
 
+def str_or_none(value: Any | None) -> str | None:
+    """Convert value to str if not None."""
+    return str(value) if value is not None else None
+
 SQL_TYPES = {
     bool: (Boolean, {}, ..., ...),
     bytes: (LargeBinary, {}, ..., ...),
     date: (Date, {}, ..., ...),
     datetime: (DateTime, {}, ..., ...),
+    EmailStr: (String, {}, str_or_none, str_or_none),
     float: (Float, {}, ..., ...),
     int: (Integer, {}, ..., ...),
     str: (String, {}, ..., ...),

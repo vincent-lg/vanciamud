@@ -70,11 +70,25 @@ def handle_data(
     from data.delay import Delay
     from data.exit import Exit
     from data.generator import Generator
+    from data.npc import NPC
+    from data.player import Player
     from data.room import Room
     from data.session import Session
 
     engine = SqliteEngine()
     kwargs = dict(file_name="talismud.db", memory=memory, logging=logging)
     engine.init(**kwargs)
-    engine.bind({Account, Character, Delay, Exit, Generator, Room, Session})
+    engine.bind(
+        {
+            Account,
+            Character,
+            Delay,
+            Exit,
+            Generator,
+            NPC,
+            Player,
+            Room,
+            Session,
+        }
+    )
     return engine

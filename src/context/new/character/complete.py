@@ -32,7 +32,7 @@
 from dynaconf import settings
 
 from context.base import Context
-from data.character import Character
+from data.player import Player
 from data.room import Room
 
 
@@ -44,10 +44,14 @@ class Complete(Context):
         """Leave this context at once."""
         account = self.session.db.account
         name = self.session.db.name
-        character = Character.create(name=name, account=account)
-        account.characters.append(character)
+        player = Player.create(name=name, account=account)
+        account.players.append(player)
+
+        if Player.count() == 1:
+            player.permissions.add("admin")
+
         self.msg(f"The character {name} has been created successfully.")
-        self.session.db.character = character
+        self.session.db.character = player
         room = Room.get(barcode=settings.START_ROOM, raise_not_found=False)
-        character.room = room
+        player.room = room
         self.move("character.login")

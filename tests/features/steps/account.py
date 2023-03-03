@@ -2,7 +2,7 @@ from behave import given, then
 from hamcrest import assert_that, equal_to, none, not_none
 
 from data.account import Account
-from data.character import Character
+from data.player import Player
 
 
 @given(
@@ -13,7 +13,7 @@ def step_impl(context, username, password, characters):
     account = _create_account(username, password)
 
     for _ in range(characters):
-        account.characters.append(Character.create(account=account))
+        account.players.append(Player.create(account=account))
 
     context.account = account
 

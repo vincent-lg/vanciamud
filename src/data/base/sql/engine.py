@@ -582,7 +582,7 @@ class SqliteEngine:
         table, nattr, inattr = self._get_three_tables(model_class)
         if not model_class.is_first_class:
             additional_filter = table.class_path == model_class.class_path
-            if query:
+            if query is not None:
                 query &= additional_filter
             else:
                 query = additional_filter
@@ -621,7 +621,7 @@ class SqliteEngine:
 
         if not model_class.is_first_class:
             additional_filter = table.class_path == model_class.class_path
-            if query:
+            if query is not None:
                 query &= additional_filter
             else:
                 query = additional_filter
@@ -694,8 +694,8 @@ class SqliteEngine:
             table, nattr, inattr = self._get_three_tables(cls)
             is_external = cls.is_external(field)
             pkey = cls.get_primary_key_from_model(model)
-            if cls.is_base_field(field):
-                nattr = None
+            #if cls.is_base_field(field):
+            #    nattr = None
 
             if nattr and is_external:
                 statement = (

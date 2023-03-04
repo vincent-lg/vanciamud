@@ -58,6 +58,7 @@ from pathlib import Path
 import pickle
 from queue import Queue
 from typing import Any, Callable, Type, Union
+from warnings import warn
 
 from pydantic import Field
 from sqlalchemy import (
@@ -269,6 +270,28 @@ class SqliteEngine:
                     kwargs["primary_key"] = True
                     if field.type_ is int:
                         kwargs["autoincrement"] = True
+
+                if (
+                    model.is_first_class
+                    and field.type_ not in SQL_TYPES
+                    and not model.is_safe(field)
+                ):
+                    warn(
+                        f"the field {field.name} in model {model.class_path} "
+                        "is not external, yet its type requires it to store "
+                        "a pickled attribute.  While this might be "
+                        "the desired behavior, if this field contains "
+                        "references to external models, there might "
+                        "very easily be a situation in which getting "
+                        "a model raises a RecursionError.  It might be "
+                        "wiser to set this field as external, like this:\n"
+                        f"class {model.__name__}:\n\n"
+                        f"    {field.name} = Field(..., external=True)\n"
+                        "Alternatively, you can silence this warning by "
+                        "specifying the 'safe' field value:\n"
+                        f"class {model.__name__}:\n\n"
+                        f"    {field.name} = Field(..., safe=True)"
+                    )
 
                 fields[key] = Column(column, **kwargs)
 
@@ -705,7 +728,7 @@ class SqliteEngine:
             path = cls.class_path
             table, nattr, inattr = self._get_three_tables(cls)
             is_external = cls.is_external(field)
-            pkey = cls.get_primary_key_from_model(model)
+            pkey = cls.get_primary_key_from_model(model, sanitize=True)
             if nattr and is_external:
                 statement = select(func.count(nattr.id)).where(
                     (nattr.name == key) & (nattr.model == pkey)
@@ -713,7 +736,7 @@ class SqliteEngine:
                 number = self.session.execute(statement).scalar_one()
                 if number == 0:
                     statement = insert(nattr).values(
-                        name=key, model=pkey, value=value
+                        name=key, model=pkey, value=pickle.dumps(value)
                     )
                 else:
                     statement = (
@@ -902,6 +925,9 @@ class SqliteEngine:
         default = (..., ..., pickle.dumps, ...)
         for key, value in attributes.items():
             field = model_class.__fields__[key]
+            if model_class.is_external(field):
+                continue
+
             _, _, convert, _ = SQL_TYPES.get(field.type_, default)
             if convert is not ...:
                 value = convert(value)

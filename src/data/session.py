@@ -58,10 +58,12 @@ class Session(Model):
     secured: bool
     creation: datetime = Field(default_factory=datetime.utcnow)
     encoding: str = "utf-8"
-    db: NamespaceHandler = Field(default_factory=NamespaceHandler)
+    db: NamespaceHandler = Field(
+        default_factory=NamespaceHandler, external=True
+    )
     context_path: str = "unset"
-    context_options: dict = Field(default_factory=dict)
-    character: Optional["Character"] = None
+    context_options: dict = Field(default_factory=dict, external=True)
+    character: Optional["Character"] = Field(None, external=True)
 
     @lazy_property
     def context(self):

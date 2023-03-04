@@ -158,6 +158,17 @@ class ModelMetaclass(BaseModelMetaclass):
 
         return external
 
+    def is_safe(cls, field: Field) -> bool:
+        """Return whether this field is safe.
+
+        Args:
+            field (Field): the field to test.
+
+        Returns:
+            safe (bool): whether this field is safe.
+
+        """
+        return field.field_info.extra.get("safe", False)
     def create(cls, **kwargs):
         """Create a node and store it in the database.
 
@@ -230,11 +241,11 @@ class ModelMetaclass(BaseModelMetaclass):
         """Delete the specified model."""
         ModelMetaclass.engine.delete(model)
 
-    def get_primary_keys_from_class(cls) -> dict[str, Field]:
+    def get_primary_keys_from_class(cls, unique: bool = False) -> dict[str, Field]:
         """Return the primary key fields in a dictionary.
 
         Args:
-            None.
+            unique (bool, optional): also return unique fields.
 
         Returns:
             primary_keys (dict): the primary key fields, with field names
@@ -243,7 +254,13 @@ class ModelMetaclass(BaseModelMetaclass):
         """
         pkeys = {}
         for field in cls.__fields__.values():
+            store = False
             if field.field_info.extra.get("primary_key", False):
+                store = True
+            elif unique and field.field_info.extra.get("unique", False):
+                store = True
+
+            if store:
                 pkeys[field.name] = field
 
         return pkeys
@@ -328,7 +345,11 @@ class ModelMetaclass(BaseModelMetaclass):
         return keys
 
     def get_primary_keys_from_model(
-        cls, model: "Model", as_tuple: bool = False
+        cls,
+        model: "Model",
+        as_tuple: bool = False,
+        sanitize: bool = False,
+        unique: bool = False,
     ) -> tuple[Any] | dict[str, Any]:
         """Return the primary key values from a model.
 
@@ -338,6 +359,8 @@ class ModelMetaclass(BaseModelMetaclass):
         Args:
             model (Model): the model.
             as_tuple (bool, optional): should a tuple be returned?
+            sanitize (bool): get ready to store.
+            unique (bool): also return unique fields.
 
         Returns:
             primary_keys (dict or tuple): the primary keys, with field names
@@ -346,9 +369,12 @@ class ModelMetaclass(BaseModelMetaclass):
 
         """
         pkeys = {}
-        for key in cls.get_primary_keys_from_class().keys():
+        for key in cls.get_primary_keys_from_class(unique=unique).keys():
             value = getattr(model, key)
             pkeys[key] = value
+
+        if sanitize:
+            pkeys = ModelMetaclass.engine.as_fields(cls, pkeys)
 
         if as_tuple:
             pkeys = sorted([(key, value) for key, value in pkeys.items()])
@@ -356,13 +382,16 @@ class ModelMetaclass(BaseModelMetaclass):
 
         return pkeys
 
-    def get_primary_key_from_model(cls, model: "Model") -> Any:
+    def get_primary_key_from_model(
+        cls, model: "Model", sanitize: bool = False
+    ) -> Any:
         """Return the only primary key for this model.
 
         If this model has more than one primary key, an exception is raised.
 
         Args:
             model (Model): the model.
+            sanitize (bool): return as ready to store.
 
         Returns:
             key (Any): the primary key value for this model.
@@ -371,7 +400,7 @@ class ModelMetaclass(BaseModelMetaclass):
             ValueError if the model has more than one primary keys.
 
         """
-        pkeys = cls.get_primary_keys_from_model(model)
+        pkeys = cls.get_primary_keys_from_model(model, sanitize=sanitize)
         if len(pkeys) != 1:
             raise ValueError(
                 f"there is {len(pkeys)} primary key attributes "

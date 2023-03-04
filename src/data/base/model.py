@@ -46,6 +46,10 @@ class Model(BaseModel, metaclass=ModelMetaclass):
 
     """
 
+    def __repr_args__(self):
+        attrs = type(self).get_primary_keys_from_model(self, unique=True)
+        return tuple(attrs.items())
+
     def __hash__(self):
         return hash(
             type(self).get_primary_keys_from_model(self, as_tuple=True)

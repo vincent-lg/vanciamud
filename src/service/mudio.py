@@ -263,14 +263,17 @@ class Service(BaseService):
         """
         received = datetime.utcnow()
         data = self.parent.data
-        with data.engine.session.begin():
-            context = session.context
-            context.handle_input(command)
-            if context.hide_input:
-                command = "*" * 8
+        try:
+            with data.engine.session.begin():
+                context = session.context
+                context.handle_input(command)
+                if context.hide_input:
+                    command = "*" * 8
 
-            executed = datetime.utcnow()
-            self.record_stat(session, command, sent, received, executed)
+                executed = datetime.utcnow()
+                self.record_stat(session, command, sent, received, executed)
+        except Exception:
+            self.handle_error(session)
 
     async def send_output(self, input_id: Optional[int] = None):
         """Send output synchronously."""
@@ -306,6 +309,18 @@ class Service(BaseService):
                         input_id=input_id,
                     ),
                 )
+
+    def handle_error(self, session: Session) -> None:
+        """Handle an error as an exception.
+
+        This method will be called whenever a traceback occurs while
+        executing an input.
+
+        Args:
+            session (Session): the session.
+
+        """
+        session.msg(traceback.format_Exc().strip())
 
     @staticmethod
     def dynamically_load(

@@ -141,6 +141,8 @@ class CmdMixin:
     async def init(self):
         """The service is initialized."""
         self.secret_key = ""
+        self.register_hook("receive")
+        self.register_hook("send")
         self.register_hook("error_read")
         self.register_hook("error_write")
 
@@ -367,6 +369,7 @@ class CmdMixin:
 
         if method:
             origin = Origin(id=cmd_id, reader=reader, writer=writer)
+            await self.call_hook("receive", reader, cmd, cmd_id, kwargs)
             try:
                 await method(origin, **kwargs)
             except asyncio.CancelledError:
@@ -401,6 +404,7 @@ class CmdMixin:
         """
         cmd_id = next(self.cmd_id) if cmd_id is None else cmd_id
         args = args or {}
+        await self.call_hook("send", writer, cmd_name, cmd_id, args)
         encoded = mode.compose(cmd_name, cmd_id, args)
         initial_packet = pack(
             INITIAL_PACKET_FORMAT_STRING, mode.value, len(encoded)

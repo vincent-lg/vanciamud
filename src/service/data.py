@@ -58,6 +58,9 @@ class Service(BaseService):
 
         """
         self.engine = handle_data(logging=self.log_query)
+        self.logger.debug(
+            self.indented("Connected to the database", added_depth=1)
+        )
 
     async def setup(self):
         """Set the portal up."""

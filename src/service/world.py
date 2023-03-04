@@ -165,8 +165,9 @@ class Blueprint:
 
             # Try go get the object from the database.
             obj = model.get(raise_not_found=False, **keys)
+            path = model.class_path
             if obj is not None:
-                logger.debug(f"Object {obj} was found and will be updated.")
+                logger.debug(f"{path} {obj} was found and will be updated.")
 
                 for key, value in definition.items():
                     field = model.__fields__[key]
@@ -192,7 +193,7 @@ class Blueprint:
                     obj = model.create(**safe)
                 except Exception:
                     logger.exception(
-                        "An error occurred while creating this object:"
+                        f"An error occurred while creating {path}:"
                     )
 
                 # Update the handler values.

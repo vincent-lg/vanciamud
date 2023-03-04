@@ -41,6 +41,7 @@ HOST clients) can be found in `service/cmd.py`.
 """
 
 import asyncio
+from itertools import count
 import os
 import platform
 import secrets
@@ -50,6 +51,7 @@ import keyring
 
 from service.base import BaseService
 from service.cmd import CmdMixin
+from service.net_event import NetEvent
 
 
 class Service(CmdMixin, BaseService):
@@ -75,9 +77,14 @@ class Service(CmdMixin, BaseService):
 
         """
         await super().init()
+        self.net_events = []
         self.serving_task = None
         self.readers = {}
         self.writers = {}
+        self.cnx_id = count(1)
+        self.reader_ids = {}
+        self.writer_ids = {}
+        self.type_cnx = {}
 
         # Create a random secret key which will be used to sign/unsign
         # CRUX messages between server and clients.
@@ -93,6 +100,8 @@ class Service(CmdMixin, BaseService):
     async def setup(self):
         """Set the CRUX server up."""
         await super().setup()
+        self.schedule_hook("receive", self.hook_receive)
+        self.schedule_hook("send", self.hook_send)
         self.schedule_hook("error_read", self.error_read)
         self.schedule_hook("error_write", self.error_write)
         self.serving_task = asyncio.create_task(self.start_serving())
@@ -123,6 +132,11 @@ class Service(CmdMixin, BaseService):
         self.logger.debug(
             f"CRUX: preparing to listen on localhost, port {port}"
         )
+        self.trace_net(
+            destination=None,
+            name="cnx",
+            hint=f"Listening on localhost:{port}",
+        )
 
         try:
             server = await asyncio.start_server(
@@ -150,6 +164,15 @@ class Service(CmdMixin, BaseService):
         self.logger.debug(f"CRUX: {addr} has just connected.")
         self.readers[reader] = writer
         self.writers[writer] = reader
+        cnx_id = next(self.cnx_id)
+        self.writer_ids[writer] = cnx_id
+        self.reader_ids[reader] = cnx_id
+        self.type_cnx[cnx_id] = "?"
+        self.trace_net(
+            destination=reader,
+            name="new_cnx",
+            hint=f"new connection from {addr}",
+        )
 
         try:
             await self.read_commands(reader, writer)
@@ -183,9 +206,19 @@ class Service(CmdMixin, BaseService):
                 "CRUX: connection was lost with a host, but the associated "
                 "writer cannot be found."
             )
+            self.trace_net(
+                destination=reader,
+                name="lost_cnx_read",
+                hint="connection was lost with this host when reading",
+            )
         else:
             self.writers.pop(writer)
             self.logger.info("CRUX: connection to a host was closed.")
+            self.trace_net(
+                destination=reader,
+                name="disc_read",
+                hint="normal disconnection when reading"
+            )
 
         await self.parent.error_read(writer)
 
@@ -197,8 +230,66 @@ class Service(CmdMixin, BaseService):
                 "CRUX: connection was lost with a host, but the associated "
                 "reader cannot be found."
             )
+            self.trace_net(
+                destination=writer,
+                name="lost_cnx",
+                hint="a connection was lost with this host when writing",
+            )
         else:
             self.readers.pop(reader)
             self.logger.info("CRUX: connection to a host was closed.")
+            self.trace_net(
+                destination=writer,
+                name="disc_write",
+                hint="normal disconnection when writing",
+            )
 
         await self.parent.error_write(writer)
+
+    async def hook_receive(
+        self,
+        reader: asyncio.StreamReader,
+        cmd_name: str,
+        cmd_id: int,
+        args: dict[str, Any],
+    ) -> None:
+        """When a message is received."""
+        args = dict(cmd=cmd_name, id=cmd_id, args=args)
+        self.trace_net(destination=reader, name="recv", args=args)
+
+    async def hook_send(
+        self,
+        writer: asyncio.StreamWriter,
+        cmd_name: str,
+        cmd_id: int,
+        args: dict[str, Any],
+    ) -> None:
+        """When a message is sent."""
+        args = dict(cmd=cmd_name, id=cmd_id, args=args)
+        self.trace_net(destination=writer, name="send", args=args)
+
+    def trace_net(
+        self,
+        destination: None | asyncio.StreamWriter | asyncio.StreamReader,
+        name: str,
+        hint: str | None = None,
+        args: None | dict[str, Any] = None,
+    ) -> None:
+        """Trace a network message."""
+        type_cnx = ""
+        if destination is not None:
+            if isinstance(destination, asyncio.StreamWriter):
+                destination = self.writer_ids.get(destination, "?")
+            elif isinstance(destination, asyncio.StreamReader):
+                destination = self.reader_ids.get(destination, "?")
+            type_cnx = self.type_cnx.get(destination, "U")
+
+        self.net_events.append(
+            NetEvent(
+                destination=destination,
+                type=type_cnx,
+                name=name,
+                hint=hint,
+                args=args,
+            )
+        )

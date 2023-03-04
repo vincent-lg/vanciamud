@@ -39,11 +39,7 @@ from subprocess import Popen, PIPE, run
 import sys
 from typing import Tuple
 
-# Import wintypes if on Windows
-if platform.system() == "Windows":
-    import ctypes
-    import ctypes.wintypes
-
+from psutil import pid_exists
 from loguru import logger
 
 from process.log import name_filter
@@ -134,32 +130,7 @@ class Process(metaclass=ABCMeta):
             running (bool): whether the process is running or not.
 
         """
-        if platform.system() == "Windows":
-            kernel32 = ctypes.windll.kernel32
-            handle = kernel32.OpenProcess(1, 0, pid)
-            if handle == 0:
-                return False
-
-            # If the process exited recently, a PID may still
-            # exist for the handle.  So, check if we can get the exit code.
-            exit_code = ctypes.wintypes.DWORD()
-            is_running = (
-                kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
-                == 0
-            )
-            kernel32.CloseHandle(handle)
-
-            # See if we couldn't get the exit code or the exit code indicates
-            # that the process is still running.
-            return is_running and exit_code.value == _STILL_ACTIVE
-
-        # On Linux/Mac, just try to kill the process with signal 0.
-        try:
-            os.kill(pid, 0)
-        except OSError:
-            return False
-
-        return True
+        return pid_exists(pid)
 
     def run_command(self, command: str) -> int:
         """Run the specified command, reutning its status.

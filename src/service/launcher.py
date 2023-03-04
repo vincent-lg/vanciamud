@@ -118,7 +118,9 @@ class Service(BaseService):
         self.services["host"].read_secret_key()
         self.operations = MUDOp.PORTAL_ONLINE
         self.status = MUDStatus.PORTAL_ONLINE
-        result = await host.wait_for_answer(host.writer, "what_game_id")
+        result = await host.wait_for_answer(
+            host.writer, "what_game_id", dict(name="launcher")
+        )
 
         if result is None:
             host.max_attempts = max_attempts
@@ -226,7 +228,7 @@ class Service(BaseService):
 
             # Make sure the game needs to be started.
             result = await host.wait_for_answer(
-                host.writer, "what_game_id", timeout=2
+                host.writer, "what_game_id", dict(name="launcher"), timeout=2
             )
             game_id = result.get("game_id")
             if game_id:
@@ -451,6 +453,39 @@ class Service(BaseService):
         for session_id, (ip, creation, secured) in sessions.items():
             secured = "Yes" if secured else "No"
             table.rows.append((session_id.hex, ip, creation, secured))
+        print(table)
+
+    async def action_net(self, args: argparse.ArgumentParser):
+        """Display the list of network packets."""
+        host = self.services["host"]
+        await self.check_status()
+        if not host.connected:
+            print("The portal doesn't seem to be connected at the moment.")
+            return
+
+        result = await host.wait_for_answer(host.writer, "net")
+        packets = result.get("packets", {})
+
+        if len(packets) == 0:
+            print("No packet was received... that's most odd.")
+            return
+
+        # Display packets in an ASCII table.
+        table = BeautifulTable()
+        table.columns.header = ("Destination", "Name", "Msg")
+        table.columns.header.alignment = BeautifulTable.ALIGN_LEFT
+        table.columns.alignment["Destination"] = BeautifulTable.ALIGN_RIGHT
+        table.columns.alignment["Name"] = BeautifulTable.ALIGN_LEFT
+        table.columns.alignment["Msg"] = BeautifulTable.ALIGN_LEFT
+        table.set_style(BeautifulTable.STYLE_NONE)
+
+        for packet in packets:
+            destination = f"{packet.destination}({packet.type})"
+            msg = packet.hint
+            if packet.args:
+                msg = str(packet.args)
+
+            table.rows.append((destination, packet.name, msg))
         print(table)
 
     async def action_shell(self, args: argparse.ArgumentParser):

@@ -34,6 +34,9 @@ import base64
 import time
 from uuid import UUID
 
+from async_timeout import timeout as async_timeout
+
+from process.base import Process
 from service.base import BaseService
 from service.origin import Origin
 
@@ -157,16 +160,20 @@ class Service(BaseService):
         await self.cleanup_watch_return_code()
 
         crux = self.services["crux"]
+        cnx_id = crux.reader_ids.get(origin.reader)
+        crux.type_cnx[cnx_id] = "G"
         sessions = []
         info = dict(
             game_id=game_id, sessions=sessions, pid=pid, has_admin=has_admin
         )
         await crux.broadcast("registered_game", info)
 
-    async def handle_what_game_id(self, origin: Origin):
+    async def handle_what_game_id(self, origin: Origin, name: str):
         """Return the game ID to the one querying for it."""
         crux = self.services["crux"]
         await crux.answer(origin, dict(game_id=self.game_id))
+        cnx_id = crux.reader_ids.get(origin.reader)
+        crux.type_cnx[cnx_id] = name[0].upper()
 
     async def handle_start_game(self, origin: Origin):
         """Handle the start_game command."""
@@ -205,20 +212,24 @@ class Service(BaseService):
             crux = self.services["crux"]
             for writer in crux.readers.values():
                 await crux.send_cmd(writer, "game_stopped")
-            return
+            return True
 
-        begin = time.time()
-        while time.time() - begin < 3 and self.game_id:
-            await crux.wait_for_cmd(self.game_reader, "*", 0.5)
-            if self.game_reader:
-                await self.check_eof(self.game_reader)
+        async with async_timeout(5):
+            while self.game_pid and Process.is_running(self.game_pid):
+                await crux.wait_for_cmd(self.game_reader, "*", 0.5)
+                if self.game_reader:
+                    await self.check_eof(self.game_reader)
 
         if self.game_id:
             self.logger.warning(
                 "The game process hasn't stopped, though it should have."
             )
+            stopped = False
         else:
             self.logger.debug("The game process has stopped.")
+            stopped = True
+
+        return stopped
 
     async def handle_restart_game(
         self,
@@ -233,26 +244,22 @@ class Service(BaseService):
             for session_id in telnet.sessions.keys():
                 await telnet.write_to(session_id, "Restarting the game ...")
 
-        await self.handle_stop_game(origin.reader)
-        begin = time.time()
-        while time.time() - begin < 5:
-            if self.game_id is None:
-                self.logger.debug("The game was stopped, now start it again.")
-                await self.handle_start_game(origin.reader)
-                break
-
-            await asyncio.sleep(0.1)
+        stopped = await self.handle_stop_game(origin.reader)
+        if stopped:
+            self.logger.debug("The game was stopped, now start it again.")
+            await self.handle_start_game(origin.reader)
 
         # Wait for the game to register again.
-        begin = time.time()
-        while time.time() - begin < 5:
-            if self.game_id:
-                break
+        async with async_timeout(5):
+            while True:
+                if self.game_id:
+                    break
 
-            await asyncio.sleep(0.1)
+                await asyncio.sleep(0.1)
 
         if not self.game_id:
             self.logger.warning("The game should have started by now.")
+            return
 
         if announce and self.game_id:
             # Announce to all contected clients
@@ -296,6 +303,22 @@ class Service(BaseService):
             )
 
         await crux.answer(origin, dict(sessions=sessions))
+
+    async def handle_net(self, origin: Origin, **kwargs):
+        """Reply with the list of sessions."""
+        crux = self.services["crux"]
+        net_events = []
+        skip = None
+        for event in crux.net_events:
+            event.type = crux.type_cnx.get(event.destination, "U")
+            if args := event.args:
+                if args := args.get("args"):
+                    if "packets" in args:
+                        event.args["args"] = dict(packets="...")
+
+            net_events.append(event)
+
+        await crux.answer(origin, dict(packets=net_events))
 
     async def handle_output(
         self,

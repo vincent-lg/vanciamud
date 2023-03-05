@@ -488,6 +488,17 @@ class Service(BaseService):
             table.rows.append((destination, packet.name, msg))
         print(table)
 
+    async def action_force_kill(self, args: argparse.ArgumentParser):
+        """Force the game to abrupty stop."""
+        host = self.services["host"]
+        await self.check_status()
+        if not host.connected:
+            print("The portal doesn't seem to be connected at the moment.")
+            return
+
+        result = await host.wait_for_answer(host.writer, "brutal_stop_game")
+        print(result)
+
     async def action_shell(self, args: argparse.ArgumentParser):
         """Open a Python-like shell and send command to the portal.
 

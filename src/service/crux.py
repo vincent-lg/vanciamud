@@ -217,7 +217,7 @@ class Service(CmdMixin, BaseService):
             self.trace_net(
                 destination=reader,
                 name="disc_read",
-                hint="normal disconnection when reading"
+                hint="normal disconnection when reading",
             )
 
         await self.parent.error_read(writer)

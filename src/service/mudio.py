@@ -34,6 +34,7 @@ from collections import defaultdict
 from datetime import datetime
 from importlib import import_module
 from pathlib import Path
+import traceback
 from typing import Any, Dict, Optional, Sequence, Type, Union
 
 from loguru._logger import Logger
@@ -262,18 +263,13 @@ class Service(BaseService):
 
         """
         received = datetime.utcnow()
-        data = self.parent.data
-        try:
-            with data.engine.session.begin():
-                context = session.context
-                context.handle_input(command)
-                if context.hide_input:
-                    command = "*" * 8
+        context = session.context
+        context.handle_input(command)
+        if context.hide_input:
+            command = "*" * 8
 
-                executed = datetime.utcnow()
-                self.record_stat(session, command, sent, received, executed)
-        except Exception:
-            self.handle_error(session)
+        executed = datetime.utcnow()
+        self.record_stat(session, command, sent, received, executed)
 
     async def send_output(self, input_id: Optional[int] = None):
         """Send output synchronously."""
@@ -320,7 +316,7 @@ class Service(BaseService):
             session (Session): the session.
 
         """
-        session.msg(traceback.format_Exc().strip())
+        session.msg(traceback.format_exc().strip())
 
     @staticmethod
     def dynamically_load(

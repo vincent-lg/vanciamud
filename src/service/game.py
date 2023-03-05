@@ -194,11 +194,25 @@ class Service(BaseService):
             is processed, send an 'output' message.
 
         """
-        session = self.data.get_session(session_id)
-        command = command.decode(session.encoding, errors="replace")
-        self.mudio.handle_input(session, command, sent)
-        await self.mudio.send_output(input_id)
-        await self.send_portal_commands()
+        data = self.data
+        try:
+            with data.engine.session.begin():
+                session = self.data.get_session(session_id)
+                command = command.decode(session.encoding, errors="replace")
+                self.mudio.handle_input(session, command, sent)
+        except Exception:
+            import traceback
+            print("game")
+            print(traceback.format_exc())
+            #self.logger.exception("Cannot process input")
+        finally:
+            try:
+                with data.engine.session.begin():
+                    await self.mudio.send_output(input_id)
+                    await self.send_portal_commands()
+            except Exception:
+                import traceback
+                print(traceback.format_exc())
 
     async def handle_new_session(
         self,
@@ -235,8 +249,8 @@ class Service(BaseService):
 
             session.context.enter()
 
-        await self.mudio.send_output(0)
-        await self.send_portal_commands()
+            await self.mudio.send_output(0)
+            await self.send_portal_commands()
 
     async def handle_disconnect_session(
         self,

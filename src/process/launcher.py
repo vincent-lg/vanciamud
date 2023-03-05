@@ -80,6 +80,10 @@ sub_migration = subparsers.add_parser(
 )
 sub_migration.set_defaults(action="migration")
 sub_migration.add_argument("message", help="the migration message")
+sub_kill = subparsers.add_parser(
+    "force-kill", help="force the game to brutally stop"
+)
+sub_kill.set_defaults(action="force_kill")
 
 
 class Launcher(Process):

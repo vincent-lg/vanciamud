@@ -31,7 +31,6 @@
 
 import asyncio
 import base64
-import time
 from uuid import UUID
 
 from async_timeout import timeout as async_timeout
@@ -308,7 +307,6 @@ class Service(BaseService):
         """Reply with the list of sessions."""
         crux = self.services["crux"]
         net_events = []
-        skip = None
         for event in crux.net_events:
             event.type = crux.type_cnx.get(event.destination, "U")
             if args := event.args:
@@ -319,6 +317,20 @@ class Service(BaseService):
             net_events.append(event)
 
         await crux.answer(origin, dict(packets=net_events))
+
+    async def handle_brutal_stop_game(self, origin: Origin):
+        """Brutally terminate the game process if started."""
+        crux = self.services["crux"]
+        if self.game_pid:
+            from psutil import Process
+            game = Process(self.game_pid)
+            args = dict(cmd_line=str(game.cmdline()), status=str(game.status()))
+            game.terminate()
+            stdout, stderr = self.game_process.communicate()
+            args.update(dict(stdout=str(stdout), stderr=str(stderr)))
+        else:
+            args = dict(status="not started")
+        await crux.answer(origin, args)
 
     async def handle_output(
         self,

@@ -34,6 +34,7 @@ from typing import Optional, TYPE_CHECKING
 from data.base.node import Field, Node
 from data.handler.channels import ChannelHandler
 from data.handler.contexts import ContextHandler
+from data.handler.namespace import NamespaceHandler
 from data.handler.permissions import PermissionHandler
 
 if TYPE_CHECKING:
@@ -50,6 +51,7 @@ class Character(Node):
     contexts: ContextHandler = Field(default_factory=ContextHandler)
     permissions: PermissionHandler = Field(default_factory=PermissionHandler)
     channels: ChannelHandler = Field(default_factory=ChannelHandler)
+    db: NamespaceHandler = Field(default_factory=NamespaceHandler)
     room: Optional["Room"] = None
     session: Optional["Session"] = None
 

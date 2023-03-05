@@ -52,6 +52,7 @@ class Py(Command):
         vars = {
             "self": self.character,
         }
+        vars.update(type(self).service.parent.console.locals)
 
         # If there's no code, open the `admin.py` context.
         if not code:

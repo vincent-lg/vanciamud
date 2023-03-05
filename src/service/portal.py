@@ -323,8 +323,11 @@ class Service(BaseService):
         crux = self.services["crux"]
         if self.game_pid:
             from psutil import Process
+
             game = Process(self.game_pid)
-            args = dict(cmd_line=str(game.cmdline()), status=str(game.status()))
+            args = dict(
+                cmd_line=str(game.cmdline()), status=str(game.status())
+            )
             game.terminate()
             stdout, stderr = self.game_process.communicate()
             args.update(dict(stdout=str(stdout), stderr=str(stderr)))

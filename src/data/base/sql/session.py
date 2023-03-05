@@ -58,4 +58,5 @@ class TalisMUDSessionTransaction(SessionTransaction):
 
     def rollback(self, *args, **kwargs):
         self.talismud_engine.log("ROLLBACK", (id(self),))
+        self.talismud_engine.clear_cache()
         super().rollback(*args, **kwargs)

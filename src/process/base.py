@@ -37,7 +37,6 @@ import platform
 from shlex import split
 from subprocess import Popen, PIPE, run
 import sys
-import traceback
 from typing import Tuple
 
 from psutil import pid_exists

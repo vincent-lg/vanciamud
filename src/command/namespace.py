@@ -56,7 +56,7 @@ class ProxyNamespace:
             return object.__getattr__(self, key)
 
         key = self._transform_key(key)
-        value = getattr(self._character.db, key)
+        value = self._character.dd[key]
         return value
 
     def __setattr__(self, key: str, value: Any):
@@ -64,37 +64,34 @@ class ProxyNamespace:
             object.__setattr__(self, key, value)
         else:
             key = self._transform_key(key)
-            setattr(self._character.db, key, value)
+            self._character.db[key] = value
 
     def __delattr__(self, key: str):
         if key in ("_command", "_character"):
             object.__delattr__(self, key)
         else:
             key = self._transform_key(key)
-            delattr(self._character.db, key)
+            del self._character.db[key]
 
     def __getitem__(self, key: str) -> Any:
         key = self._transform_key(key)
-        value = getattr(self._character.db, key)
+        value = self._character.db[key]
         return value
 
     def __setitem__(self, key: str, value: Any):
         key = self._transform_key(key)
-        setattr(self._character.db, key, value)
+        self._character.db[key] = value
 
     def __delitem__(self, key: str):
         key = self._transform_key(key)
-        delattr(self._character.db, key)
+        del self._character.db[key]
 
     def clear(self):
         """Clear the command attributes."""
         cmd_key = self._transform_key("")
         for key in tuple(self._character.db.keys()):
             if key.startswith(cmd_key):
-                super(
-                    type(self._character.db), self._character.db
-                ).__delitem__(key)
-        self._character.db.save()
+                del self._character.db[key]
 
     def get(self, key: str, default: Optional[Any] = None) -> Any:
         """Get the key or a default value.

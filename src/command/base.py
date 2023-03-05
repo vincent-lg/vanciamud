@@ -268,6 +268,7 @@ class Command:
                 "An error occurred while parsing and running the "
                 f"{self.name} commnd:"
             )
+            raise
 
     def msg(self, text: str, raw: bool = False):
         """Send the message to the character running the command.

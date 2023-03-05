@@ -352,6 +352,7 @@ class SqliteEngine:
 
     def clear_cache(self):
         """Clear all the engine's cache."""
+        self.log("CLEAR CACHE")
         self.cache.clear()
         self.locator.clear()
         LazyPropertyDescriptor.memory.clear()
@@ -969,5 +970,3 @@ class SqliteEngine:
         for key, value in model.__dict__.items():
             if isinstance(value, BaseHandler):
                 value.model = (model, key)
-                if key == "exits":
-                    print("set exits", model.id, id(value))

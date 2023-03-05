@@ -50,8 +50,8 @@ from textwrap import dedent
 import traceback
 from typing import Optional, Union
 
+from context.log import logger
 from data.decorators import lazy_property
-
 from tools.delay import Delay
 
 CONTEXTS = {}
@@ -277,9 +277,10 @@ class Context:
 
         try:
             res = method(*method_args)
-        except Exception as err:
+        except Exception:
             self.msg(traceback.format_exc())
-            raise err from None
+            logger.exception("An error occurred while running the context:")
+            raise
 
         return res
 

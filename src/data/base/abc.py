@@ -169,6 +169,7 @@ class ModelMetaclass(BaseModelMetaclass):
 
         """
         return field.field_info.extra.get("safe", False)
+
     def create(cls, **kwargs):
         """Create a node and store it in the database.
 
@@ -241,7 +242,9 @@ class ModelMetaclass(BaseModelMetaclass):
         """Delete the specified model."""
         ModelMetaclass.engine.delete(model)
 
-    def get_primary_keys_from_class(cls, unique: bool = False) -> dict[str, Field]:
+    def get_primary_keys_from_class(
+        cls, unique: bool = False
+    ) -> dict[str, Field]:
         """Return the primary key fields in a dictionary.
 
         Args:

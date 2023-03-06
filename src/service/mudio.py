@@ -37,8 +37,6 @@ from pathlib import Path
 import traceback
 from typing import Any, Dict, Optional, Sequence, Type, Union
 
-from loguru._logger import Logger
-
 from channel.base import Channel
 from channel.log import logger as chn_logger
 from command.base import Command
@@ -47,6 +45,7 @@ from context.base import Context, CONTEXTS
 from context.log import logger as ctx_logger
 from data.session import Session, OUTPUT_QUEUE
 from service.base import BaseService
+from tools.logging import Logger
 
 
 class Service(BaseService):

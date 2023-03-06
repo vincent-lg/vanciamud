@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,32 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Logger metaclass."""
 
-"""Log configuration for the database."""
+from typing import Any
 
-from tools.logging.frequent import FrequentLogger
+from tools.logging.level import Level
 
-logger = FrequentLogger("database")
-logger.setup()
+
+class LoggerMetaclass(type):
+
+    """Logger metaclass that dynamically add log methods."""
+
+    def __new__(
+        cls, name: str, bases: tuple[type], attrs: dict[str, Any]
+    ) -> type:
+        new_cls = super().__new__(cls, name, bases, attrs)
+
+        # Add one method per level
+        def _log(key, level):
+            def inner(logger, message):
+                logger.log(level, message)
+
+            inner.__name__ = key.lower()
+            inner.__doc__ = f"Log a message of level {level.name}"
+            return inner
+
+        for key, level in Level.__members__.items():
+            setattr(new_cls, key.lower(), _log(key, level))
+
+        return new_cls

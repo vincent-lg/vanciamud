@@ -56,19 +56,12 @@ from itertools import count
 import pickle
 from typing import Any, Callable, Dict, Sequence
 
-import loguru
-
 from data.delay import Delay as DbDelay
-from process.log import name_filter
+from tools.logging.frequent import FrequentLogger
 
 # Logger
-loguru.logger.add(
-    "logs/delays.log",
-    level="DEBUG",
-    filter=name_filter("delay"),
-    format="{time:%Y-%m-%d %H:%M:%S.%f} [{level}] {message}",
-)
-logger = loguru.logger.bind(name="delay")
+logger = FrequentLogger("delays")
+logger.setup()
 
 
 class Delay:

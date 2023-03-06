@@ -1,4 +1,4 @@
-# Copyright (c) 2021, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,22 +27,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Log specific to TalisMUD processes."""
+"""Logging batch."""
 
-import sys
-
-from loguru import logger
-
-
-def name_filter(name):
-    """Filter by record name."""
-
-    def filter(record):
-        return record["extra"].get("name") == name
-
-    return filter
-
-
-# Add a STDOUT general handler for INFO (and beyond).
-logger.remove()
-logger.add(sys.stdout, level="INFO", format="{message}")
+from tools.logging.batch.day import Day  # noqa: F401
+from tools.logging.batch.hour import Hour  # noqa: F401

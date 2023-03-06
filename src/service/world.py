@@ -34,21 +34,15 @@ from typing import Any, Dict, Sequence
 
 from dynaconf import settings
 
-import loguru
 import yaml
 
 from data.handler.abc import BaseHandler
 from data.room import Room
-from process.log import name_filter
 from service.base import BaseService
+from tools.logging.frequent import FrequentLogger
 
-loguru.logger.add(
-    "logs/world.log",
-    level="DEBUG",
-    filter=name_filter("world"),
-    format="{time:%Y-%m-%d %H:%M:%S.%f} [{level}] {message}",
-)
-logger = loguru.logger.bind(name="world")
+logger = FrequentLogger("world")
+logger.setup()
 MODELS = {
     "room": Room,
 }

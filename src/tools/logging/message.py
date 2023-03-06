@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,46 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Simple message representation."""
 
-"""Log configuration for the database."""
+from dataclasses import dataclass
+from datetime import datetime
+from typing import TYPE_CHECKING
 
-from tools.logging.frequent import FrequentLogger
+from tools.logging.level import Level
 
-logger = FrequentLogger("database")
-logger.setup()
+if TYPE_CHECKING:
+    from tools.logging.logger import Logger
+
+
+@dataclass
+class Message:
+
+    """A simple message."""
+
+    time: datetime
+    level: str
+    message: str
+    year: str
+    month: str
+    day: str
+    hour: str
+    minute: str
+    second: str
+    ms: int
+
+    @classmethod
+    def create_for(cls, logger: "Logger", level: Level, message: str):
+        """Create a new Message instance."""
+        time = datetime.now()
+        year = time.strftime("%Y")
+        month = time.strftime("%m")
+        day = time.strftime("%d")
+        hour = time.strftime("%H")
+        minute = time.strftime("%M")
+        second = time.strftime("%S")
+        ms = f"{str(time.microsecond)[:3]:>03}"
+        kwargs = dict(time=time, level=level.name, message=message)
+        kwargs.update(dict(year=year, month=month, day=day))
+        kwargs.update(dict(hour=hour, minute=minute, second=second, ms=ms))
+        return cls(**kwargs)

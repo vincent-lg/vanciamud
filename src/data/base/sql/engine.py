@@ -234,6 +234,8 @@ class SqliteEngine:
             setattr(model.__config__, "first_class", first_class)
             models.append(model)
 
+        # Place first class models before
+        models.sort(key=lambda model: 0 if model.is_first_class else 1)
         for model in models:
             self.bind_model(model)
 
@@ -296,7 +298,7 @@ class SqliteEngine:
                 fields[key] = Column(column, **kwargs)
 
         model_name = model.__name__
-        if model.base_model is model:
+        if model.is_first_class:
             if model.__config__.children:
                 column, kwargs = self.get_model_column(model, str)
                 fields["class_path"] = Column(column, **kwargs)

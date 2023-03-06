@@ -30,14 +30,7 @@
 
 """Log configuration for contexts."""
 
-import loguru
+from tools.logging.frequent import FrequentLogger
 
-from process.log import name_filter
-
-loguru.logger.add(
-    "logs/contexts.log",
-    level="DEBUG",
-    filter=name_filter("context"),
-    format="{time:%Y-%m-%d %H:%M:%S.%f} [{level}] {message}",
-)
-logger = loguru.logger.bind(name="context")
+logger = FrequentLogger("contexts")
+logger.setup()

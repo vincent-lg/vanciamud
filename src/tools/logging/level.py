@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,16 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Simple level annotation."""
 
-"""Log configuration for the database."""
+from enum import IntEnum
 
-from tools.logging.frequent import FrequentLogger
 
-logger = FrequentLogger("database")
-logger.setup()
+class Level(IntEnum):
+
+    """Priority levels for logging."""
+
+    DEBUG = 1
+    INFO = 2
+    WARNING = WARN = 3
+    ERROR = 4

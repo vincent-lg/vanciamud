@@ -30,14 +30,7 @@
 
 """Log configuration for commands."""
 
-import loguru
+from tools.logging.frequent import FrequentLogger
 
-from process.log import name_filter
-
-loguru.logger.add(
-    "logs/commands.log",
-    level="DEBUG",
-    filter=name_filter("command"),
-    format="{time:%Y-%m-%d %H:%M:%S.%f} [{level}] {message}",
-)
-logger = loguru.logger.bind(name="command")
+logger = FrequentLogger("commands")
+logger.setup()

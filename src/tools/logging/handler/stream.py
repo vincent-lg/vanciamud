@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,51 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Stream handler."""
 
-"""Log configuration for the database."""
+from typing import Text, TextIO
 
-from tools.logging.frequent import FrequentLogger
+from dataclasses import asdict
 
-logger = FrequentLogger("database")
-logger.setup()
+from tools.logging.handler.abc import BaseHandler
+from tools.logging.level import Level
+from tools.logging.message import Message
+
+DEFAULT_FORMAT = "[{level}] {message}"
+
+
+class Stream(BaseHandler):
+
+    """Stream handler."""
+
+    def init(self):
+        """Initialize the logger."""
+        self.format = DEFAULT_FORMAT if self.format is None else self.format
+        self.output = None
+
+    def setup(self, output: Text | TextIO) -> None:
+        """Configure the stream handler.
+
+        Args:
+            output (stream): the output stream.
+
+        """
+        self.output = output
+
+    def log(self, level: Level | None, message: str | Message) -> None:
+        """Log a message.
+
+        Args:
+            level (None or Level): the level.  If `None`, always log.
+            message (str or Message): the message to log.
+
+        If the message is a `Message` object, format it.
+
+        """
+        if isinstance(message, Message):
+            message = self.format.format(**asdict(message))
+
+        if not message.endswith("\n"):
+            message = message + "\n"
+
+        self.output.write(message)

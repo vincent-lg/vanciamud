@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Logging handlers."""
 
-"""Log configuration for the database."""
-
-from tools.logging.frequent import FrequentLogger
-
-logger = FrequentLogger("database")
-logger.setup()
+from tools.logging.handler.file import File  # noqa: F401
+from tools.logging.handler.stream import Stream  # noqa: F401

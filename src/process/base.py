@@ -40,12 +40,8 @@ import sys
 from typing import Tuple
 
 from psutil import pid_exists
-from loguru import logger
 
-from process.log import name_filter
-
-# Still running (Windows).
-_STILL_ACTIVE = 259
+from tools.logging.frequent import FrequentLogger
 
 
 class Process(metaclass=ABCMeta):
@@ -64,13 +60,8 @@ class Process(metaclass=ABCMeta):
         self.started = False
         self.services = {}
         self.pid = os.getpid()
-        logger.add(
-            f"logs/{self.name}.log",
-            level="DEBUG",
-            filter=name_filter(self.name),
-            format="{time:%Y-%m-%d %H:%M:%S.%f} [{level}] {message}",
-        )
-        self.logger = logger.bind(name=self.name)
+        self.logger = FrequentLogger(self.name)
+        self.logger.setup()
 
     def __repr__(self):
         desc = f"<Process {self.name}, "

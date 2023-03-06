@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,10 +27,33 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""The TalisMUD FrequentLogger, already configured for most use cases."""
 
-"""Log configuration for the database."""
+import sys
 
-from tools.logging.frequent import FrequentLogger
+from tools.logging import File, Hour, Level, Logger, Stream
 
-logger = FrequentLogger("database")
-logger.setup()
+FILE_FORMAT = "{minute}:{second},{ms} {level} {message}"
+STREAM_FORMAT = "{message}"
+
+
+class FrequentLogger(Logger):
+
+    """TalisMUD frequent logger."""
+
+    def __init__(self, name: str):
+        super().__init__(name, "logs")
+
+    def setup(self):
+        """Setup a frequent logger."""
+        super().setup()
+        self.add_handler(
+            File,
+            Level.DEBUG,
+            cls_batch=Hour,
+            format=FILE_FORMAT,
+            output_file=f"{self.name}.log",
+        )
+        self.add_handler(
+            Stream, Level.INFO, format=STREAM_FORMAT, output=sys.stdout
+        )

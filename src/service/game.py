@@ -90,7 +90,7 @@ class Service(BaseService):
         """Schedule all persistent delays."""
         now = datetime.utcnow()
         Delay._game_service = self
-        for persistent in DbDelay.select(DbDelay.table.id > 0):
+        for persistent in DbDelay.all():
             delta = persistent.expire_at - now
             seconds = delta.total_seconds()
             if seconds < 0:
@@ -102,10 +102,11 @@ class Service(BaseService):
 
     def call_delay(self, delay: Delay):
         """Call ths delay."""
-        delay._execute()
+        with self.data.engine.session.begin():
+            delay._execute()
+
         loop = asyncio.get_event_loop()
-        loop.create_task(self.mudio.send_output(0))
-        loop.create_task(self.send_portal_commands())
+        loop.create_task(self.mudio.send())
 
     async def connected_to_CRUX(self, writer):
         """The host is connected to the CRUX server."""
@@ -121,7 +122,10 @@ class Service(BaseService):
             "A read error happened on the connection to CRUX, "
             "stop the process."
         )
-        Delay.persist()
+
+        with self.data.engine.session.begin():
+            Delay.persist()
+
         self.process.should_stop.set()
 
     async def error_write(self):
@@ -130,7 +134,10 @@ class Service(BaseService):
             "A write error happened on the connection to CRUX, "
             "stop the process."
         )
-        Delay.persist()
+
+        with self.data.engine.session.begin():
+            Delay.persist()
+
         self.process.should_stop.set()
 
     async def send_portal_commands(self):
@@ -151,14 +158,19 @@ class Service(BaseService):
         """A new game process wants to be registered."""
         self.logger.info(f"The game is now registered under ID {game_id}")
         self.game_id = game_id
-        self.restore_delays()
+
+        with self.data.engine.session.begin():
+            self.restore_delays()
 
     async def handle_stop_game(self, origin: Origin, game_id: str):
         """Stop this game process."""
         self.logger.info(f"The game of ID {game_id} is asked to stop.")
         if self.game_id == game_id:
             self.logger.debug("Shutting down the game...")
-            Delay.persist()
+
+            with self.data.engine.session.begin():
+                Delay.persist()
+
             self.process.should_stop.set()
 
     async def handle_input(

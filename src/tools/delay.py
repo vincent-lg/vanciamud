@@ -125,8 +125,8 @@ class Delay:
                 loop.create_task(self._async_execute(result))
             else:
                 type(self)._delays.pop(self.id, None)
-                if self.persistent is not None:
-                    type(self.persistent).repository.delete(self.persistent)
+                if persistent := self.persistent:
+                    DbDelay.delete(persistent)
 
     async def _async_execute(self, coroutine):
         """Execute the delayed action."""
@@ -136,8 +136,8 @@ class Delay:
             logger.exception("An error occurred while executing {self!r}")
         finally:
             type(self)._delays.pop(self.id, None)
-            if self.persistent is not None:
-                self.persistent.repository.delete(self.persistent)
+            if persistent := self.persistent:
+                DbDelay.delete(persistent)
 
     @classmethod
     def schedule(cls, *args, **kwargs):
@@ -201,7 +201,5 @@ class Delay:
                 pickled = cls._pickled(
                     delay.callback, delay.args, delay.kwargs
                 )
-                DbDelay.repository.create(
-                    expire_at=delay.expire_at, pickled=pickled
-                )
+                DbDelay.create(expire_at=delay.expire_at, pickled=pickled)
                 logger.debug(f"Persisting {delay!r} in the database.")

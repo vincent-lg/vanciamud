@@ -305,6 +305,14 @@ class Service(BaseService):
                     ),
                 )
 
+    async def send(self):
+        """Send output, handle portal commands."""
+        game = self.parent
+        data = game.data
+        with data.engine.session.begin():
+            await self.send_output(0)
+            await game.send_portal_commands()
+
     def handle_error(self, session: Session) -> None:
         """Handle an error as an exception.
 

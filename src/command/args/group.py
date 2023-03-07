@@ -64,6 +64,12 @@ class Group:
         self.optional = optional
         self.msg_error = "Invalid syntax."
         self.msg_mandatory = "You have to specify something."
+        self.default = ""
+
+    @property
+    def has_default(self):
+        """A group has a default value."""
+        return True
 
     def add_branch(self, method_name: str) -> Branch:
         """Add and return a new branch.

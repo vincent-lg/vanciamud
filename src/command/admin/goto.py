@@ -63,6 +63,7 @@ class Goto(Command):
 
     args = Command.new_parser()
     group = args.add_group()
+    group.optional = True
     nothing = group.add_branch("list_aliases")
     equal_alias = group.add_branch("add_alias")
     equal_alias.add_argument("symbols", "=")
@@ -90,7 +91,7 @@ class Goto(Command):
     def add_alias(self, destination: str):
         """Add an alias."""
         aliases = self.db.setdefault("aliases", {})
-        room = self.character.room
+        room = self.character.location
         if room is None:
             self.msg("You aren't in any room yet.")
             return
@@ -121,13 +122,13 @@ class Goto(Command):
         room = None
 
         # First, test room barcodes.
-        room = Room.repository.get(barcode=destination.lower())
+        room = Room.get(barcode=destination.lower(), raise_not_found=False)
 
         if room is None:
             # Maybe it's an alias.
             barcode = aliases.get(destination.lower())
             if barcode:
-                room = Room.repository.get(barcode=barcode)
+                room = Room.get(barcode=barcode, raise_not_found=False)
                 if room is None:
                     self.msg(
                         f"The goto alias {destination} is linked to room "
@@ -137,7 +138,8 @@ class Goto(Command):
                     return
 
         if room:
-            room.characters.append(self.character)
+            self.character.room = room
+            self.character.location = room
             self.msg(room.look(self.character))
         else:
             self.msg(f"Cannot find the room or location {destination}.")

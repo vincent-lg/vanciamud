@@ -231,7 +231,7 @@ def parse_arguments(
             break
 
         result = arg.parse(character, string, t_begin, t_end)
-        if result:
+        if not result:
             if arg.optional and arg.has_default:
                 result = DefaultResult(arg.default)
 

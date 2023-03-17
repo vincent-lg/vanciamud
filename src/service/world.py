@@ -36,18 +36,13 @@ from dynaconf import settings
 
 import yaml
 
+from data.blueprints.abc import BlueprintMetaclass
 from data.handler.abc import BaseHandler
-from data.prototype.object import ObjectPrototype
-from data.room import Room
 from service.base import BaseService
 from tools.logging.frequent import FrequentLogger
 
 logger = FrequentLogger("world")
 logger.setup()
-MODELS = {
-    "object": ObjectPrototype,
-    "room": Room,
-}
 
 
 class Service(BaseService):
@@ -139,11 +134,12 @@ class Blueprint:
                 )
                 continue
 
-            if d_type not in MODELS:
+            if d_type not in BlueprintMetaclass.models:
                 logger.warning("Unknown type: {d_type}")
                 continue
 
-            model = MODELS[d_type]
+            schema = BlueprintMetaclass.models[d_type]
+            model = schema.model
             keys = {}
             for field in model.__fields__.values():
                 if field.field_info.extra.get("bpk", False):
@@ -166,6 +162,9 @@ class Blueprint:
                 logger.debug(f"{path} {obj} was found and will be updated.")
 
                 for key, value in definition.items():
+                    if key in schema.special:
+                        continue
+
                     field = model.__fields__[key]
                     if issubclass(field.type_, BaseHandler):
                         getattr(obj, key).from_blueprint(value)
@@ -195,3 +194,17 @@ class Blueprint:
                 # Update the handler values.
                 for key, value in handlers.items():
                     getattr(obj, key).from_blueprint(value)
+
+            # Take care of the special attributes.
+            for name in schema.special:
+                method_name = f"update_{name}"
+                method = getattr(schema, method_name, None)
+                if method is None:
+                    logger.error(
+                        f"{name!r} is a special case for {model}, "
+                        f"but there is no method {method_name!r} in {schema}"
+                    )
+
+                special = definition.pop(name, ...)
+                if special is not ...:
+                    method(logger, obj, special)

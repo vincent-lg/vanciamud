@@ -94,11 +94,14 @@ class ObjectPrototype(Node):
 
         return name
 
-    def create_object_in(self, location: Node) -> Node:
+    def create_object_in(
+        self, location: Node, barcode: str | None = None
+    ) -> Node:
         """Create a new object based on this prototype.
 
         Args:
             location (Room or container): the new object's future location.
+            barcode (str, optional): the barcode to use.
 
         Returns:
             object (Object): the new object.
@@ -109,19 +112,20 @@ class ObjectPrototype(Node):
                 f"spawning {self} is impossible, one of its type is stackable"
             )
 
-        barcodes = self.used_barcodes
-        found = False
-        i = 1
-        while not found:
-            barcode = f"{self.barcode}_{i}"
-            if barcode not in barcodes:
-                found = True
-            else:
-                i += 1
+        if barcode is None:
+            barcodes = self.used_barcodes
+            found = False
+            i = 1
+            while not found:
+                barcode = f"{self.barcode}_{i}"
+                if barcode not in barcodes:
+                    found = True
+                else:
+                    i += 1
 
         obj = Object.create(prototype=self, barcode=barcode)
         self.objects = sorted(self.objects + [obj], key=lambda o: o.barcode)
-        self.used_barcodes = tuple(sorted(barcodes + (barcode,)))
+        self.used_barcodes = tuple(sorted(self.used_barcodes + (barcode,)))
         obj.location = location
 
         # Copy types.

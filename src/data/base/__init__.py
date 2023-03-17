@@ -71,6 +71,8 @@ def handle_data(
     from data.exit import Exit
     from data.generator import Generator
     from data.npc import NPC
+    from data.object import Object
+    from data.prototype.object import ObjectPrototype
     from data.player import Player
     from data.room import Room
     from data.session import Session
@@ -86,6 +88,8 @@ def handle_data(
             Exit,
             Generator,
             NPC,
+            Object,
+            ObjectPrototype,
             Player,
             Room,
             Session,

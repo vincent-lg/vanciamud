@@ -55,9 +55,11 @@ Once more, however, feature isolation isn't a goal of this design.
 from abc import ABCMeta, abstractmethod
 import asyncio
 from importlib import import_module
-from typing import Coroutine, Optional
+from pathlib import Path
+from typing import Any, Coroutine, Optional, Sequence, Type
 
 from process.base import Process
+from tools.logging import Logger
 
 
 class BaseService(metaclass=ABCMeta):
@@ -309,3 +311,101 @@ class BaseService(metaclass=ABCMeta):
                     f"hook {hook_name!r}: an exception occurred while "
                     "executing a coroutine:"
                 )
+
+    @staticmethod
+    def dynamically_load(
+        base_class: Type[Any],
+        logger: Logger,
+        parent: Path | Sequence[Path],
+        exclude: Sequence[Path] | None = None,
+    ) -> dict[str, Any]:
+        """Dynamically load any objects from modules.
+
+        Args:
+            base_class (type): any class.
+            logger (Logger): the logger to indicate errors.
+            parent (Path or sequence of Path): the parent(s).
+            exclude (Sequence of Path, optional): the path to exclude.
+
+        Returns:
+            loaded (dict): the loaded classes.
+
+        In each parent, all the Python modules will be searched recurisvely
+        and loaded.  Inside these files, the one class inheriting
+        from the base class will be loaded and returned.  If more
+        than one class from this base class is defined in this file,
+        log an error.
+
+        """
+        paths = (parent,) if isinstance(parent, Path) else parent
+        exclude = exclude or ()
+
+        # Search the module files.
+        logger.debug("Preparing to load all module files...")
+        loaded = {}
+        for path in paths:
+            for file_path in path.rglob("*.py"):
+                if file_path in exclude or any(
+                    to_ex in file_path.parents for to_ex in exclude
+                ):
+                    continue
+
+                # Search for the module to begin.
+                if file_path.name.startswith("_"):
+                    continue
+
+                # Assume this is a module containing ONE class <- base_class.
+                relative = file_path.relative_to(path)
+                pypath = ".".join(file_path.parts).removesuffix(".py")
+                py_unique = ".".join(relative.parts).removesuffix(".py")
+
+                # Try to import it.
+                try:
+                    module = import_module(pypath)
+                except Exception:
+                    logger.exception(
+                        f"  An error occurred when importing {pypath}:"
+                    )
+                    continue
+
+                # Explore the module to try to import ONE class.
+                subclass = None
+                for name, value in module.__dict__.items():
+                    if name.startswith("_"):
+                        continue
+
+                    if (
+                        isinstance(value, type)
+                        and value is not base_class
+                        and issubclass(value, base_class)
+                    ):
+                        if value.__module__ != pypath:
+                            continue
+
+                        if subclass is not None:
+                            subclass = ...
+                            break
+                        else:
+                            subclass = value
+
+                if subclass is None:
+                    logger.warning(
+                        f"No class inheriting from {base_class.__name__!r} "
+                        f"could be found in {pypath}."
+                    )
+                    continue
+                elif subclass is ...:
+                    logger.warning(
+                        "More than one class inheriting from "
+                        f"{base_class.__name__!r} are present "
+                        f"in module {pypath}, not loading any."
+                    )
+                    continue
+                else:
+                    logger.debug(
+                        f"  Load the class in {pypath} (name={py_unique!r})"
+                    )
+                    loaded[py_unique] = subclass
+                    subclass.file_path = file_path
+
+        return loaded

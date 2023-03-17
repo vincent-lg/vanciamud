@@ -30,6 +30,7 @@
 """Data service."""
 
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 from uuid import UUID
 
@@ -38,6 +39,7 @@ from dynaconf import settings
 from data.base import handle_data
 from data.log import logger
 from data.session import Session
+from data.type.base import BaseType
 from service.base import BaseService
 from service.shell import Shell
 
@@ -57,6 +59,26 @@ class Service(BaseService):
         often are created there for consistency.
 
         """
+        # Dynamically Load the object types.
+        types = self.dynamically_load(
+            BaseType,
+            self.logger,
+            Path("data/type"),
+            exclude=(
+                Path("data/type/abc.py"),
+                Path("data/type/base.py"),
+                Path("data/type/namespace.py"),
+            ),
+        )
+        s = "s" if len(types) > 1 else ""
+        was = "were" if len(types) > 1 else "was"
+        self.logger.info(
+            f"{len(types)} object type{s} {was} successfully loaded."
+        )
+        for path, o_type in types.items():
+            o_type.pyname = path
+
+        # Connect to the database.
         self.engine = handle_data(logging=self.log_query)
         self.logger.debug(
             self.indented("Connected to the database", added_depth=1)
@@ -67,7 +89,8 @@ class Service(BaseService):
 
     async def cleanup(self):
         """Clean the service up before shutting down."""
-        self.engine.close()
+        if engine := getattr(self, "engine", None):
+            engine.close()
 
     def setup_shell(self, shell: Shell):
         """Setup the shell,a dding variables."""

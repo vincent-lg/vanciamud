@@ -30,6 +30,7 @@
 """Module containing the `Model` class from which all models should inherit."""
 
 from itertools import chain
+import pickle
 from typing import Any, Type, TYPE_CHECKING
 
 from pydantic import Field
@@ -112,6 +113,18 @@ class ModelMetaclass(BaseModelMetaclass):
         """Return the class table from the engine."""
         path = cls.base_model.class_path
         return cls.engine.tables[path]
+
+    @property
+    def nattr(cls) -> BASE:
+        """Return the class attribute table from the engine."""
+        path = cls.base_model.class_path
+        return cls.engine.attr_tables[path]
+
+    @property
+    def inattr(cls) -> BASE:
+        """Return the class indexed attribute table from the engine."""
+        path = cls.base_model.class_path
+        return cls.engine.iattr_tables[path]
 
     def is_base_field(cls, field: Field) -> bool:
         """Return whether this field is a base field.
@@ -411,6 +424,53 @@ class ModelMetaclass(BaseModelMetaclass):
             )
 
         return list(pkeys.values())[0]
+
+    def search_attributes(cls, name: str, value: Any) -> tuple[Any]:
+        """Search objects with an attribute with this value.
+
+        This will return a list of primary keys.
+        If this is a node (most common), then `search_attributes`
+        will return a list of IDs.
+
+        Args:
+            name (str: the attribute name.
+            value (Any): the attribute value to match.
+
+        The search is performed in the table's attributes (nattr).
+        If this table has no such matching attribute tables,
+        it will fail.  In other words, classes inheriting from `Model`
+        must have at least one external attribute to qualify.
+        Classes inheriting indirectly from `Node` store all
+        their attributes in a `nattr` table.
+
+        Returns:
+            list: a list of primary keys of objects with a matching attribute.
+
+        """
+        nattr = cls.nattr
+        query = (nattr.name == name) & (nattr.value == pickle.dumps(value))
+        return cls.engine.select_values(cls, nattr.model, query=query)
+
+    def get_attributes(cls, name, query: SQLRole) -> list[Any]:
+        """Return the attribute values matching a specific query.
+
+        Args:
+            name (str): the attribute name.
+            query (SQLRole): the query to match.
+
+        Returns:
+            values (list): the values.
+
+        """
+        nattr = cls.nattr
+        query &= nattr.name == name
+        raw = cls.engine.select_values(cls, nattr.value, query)
+        values = []
+        for value in raw:
+            value = pickle.loads(value)
+            values.append(value)
+
+        return values
 
     @staticmethod
     def get_class_from_path(

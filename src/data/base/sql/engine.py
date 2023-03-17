@@ -715,6 +715,40 @@ class SqliteEngine:
 
         return models
 
+    def select_values(
+        self, model_class: Type[Model], origin: SQLRole, query: SQLRole
+    ) -> list[Any]:
+        """Search values from a specified column.
+
+        Args:
+            origin (SQLRole): the column to return.
+            query (SQLRole): the filter to use.
+
+        Returns:
+            values (list): the results.
+
+        """
+        table, nattr, inattr = self._get_three_tables(model_class)
+        if not model_class.is_first_class:
+            additional_filter = table.class_path == model_class.class_path
+            if query is not None:
+                query &= additional_filter
+            else:
+                query = additional_filter
+
+        if nattr:
+            statement = select(origin).join_from(table, nattr)
+        else:
+            statement = select(origin)
+
+        if query is not None:
+            statement = statement.where(query)
+
+        values = self.session.execute(statement).all()
+        values = [value[0] for value in values]
+
+        return values
+
     def update(self, model: Model, key: str, value: Any):
         """Update the object.
 

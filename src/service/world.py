@@ -37,6 +37,7 @@ from dynaconf import settings
 import yaml
 
 from data.handler.abc import BaseHandler
+from data.prototype.object import ObjectPrototype
 from data.room import Room
 from service.base import BaseService
 from tools.logging.frequent import FrequentLogger
@@ -44,6 +45,7 @@ from tools.logging.frequent import FrequentLogger
 logger = FrequentLogger("world")
 logger.setup()
 MODELS = {
+    "object": ObjectPrototype,
     "room": Room,
 }
 

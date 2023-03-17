@@ -173,3 +173,4 @@ class DescriptionHandler(BaseHandler):
     def from_blueprint(self, text: str):
         """Recover the description from a blueprint."""
         self._text = text
+        self.save()

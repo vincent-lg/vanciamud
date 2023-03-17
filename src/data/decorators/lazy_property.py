@@ -81,11 +81,11 @@ class LazyPropertyDescriptor:
             return self
 
         # The value might be cached in `memory`
+        attr = self.fget.__name__
         try:
-            identifier = hash(instance)
+            identifier = hash((instance, attr))
         except TypeError:
             identifier = None
-            attr = self.fget.__name__
             cached_attr = f"_cached_{attr}"
 
         if identifier is not None:
@@ -106,11 +106,11 @@ class LazyPropertyDescriptor:
         if not self.fset:
             raise AttributeError("can't set attribute")
 
+        attr = self.fget.__name__
         try:
-            identifier = hash(instance)
+            identifier = hash((instance, attr))
         except TypeError:
             identifier = None
-            attr = self.fget.__name__
             cached_attr = f"_cached_{attr}"
 
         self.fset(instance, value)

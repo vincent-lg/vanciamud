@@ -74,6 +74,37 @@ class Model(BaseModel, metaclass=ModelMetaclass):
         attrs = cls.get_primary_keys_from_model(self)
         return (fetch, (cls, attrs))
 
+    def is_from(self, class_path: str) -> bool:
+        """Return whether this model is from a class with this class path.
+
+        The specified class path can be incomplete.  For instance,
+        if we try to `obj.is_from("data.object")`, then an object
+        of `data.object.Object` will match.  You can therefore specify
+        the beginning of the path (starting with `data`) and stop
+        at any point.  This will match if the class path begins
+        with your path followed by a dot.
+
+        Also note that the parent classes of the specified
+        objects are also browsed.
+
+        Args:
+            class_path (str): the class path to match.
+
+        Returns:
+            is_from (bool): if the object is from this class path.
+
+        """
+        partial_path = class_path + "."
+        for cls in type(self).__mro__:
+            path = getattr(cls, "class_path", None)
+            if path is None:
+                continue
+
+            if path == class_path or path.startswith(partial_path):
+                return True
+
+        return False
+
     class Config:
 
         extra = "forbid"

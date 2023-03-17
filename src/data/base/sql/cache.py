@@ -41,6 +41,7 @@ class Cache:
 
     def __init__(self):
         self.models = defaultdict(dict)
+        self.uniques = {}
         self.linked_cache = defaultdict(set)
 
     def put(self, model: Model) -> None:
@@ -53,15 +54,15 @@ class Cache:
 
         """
         cls = type(model)
-        pkeys = cls.get_primary_keys_from_model(model, as_tuple=True)
         base = cls.base_model
+        pkeys = cls.get_primary_keys_from_model(model, as_tuple=True)
         self.models[base][pkeys] = model
 
         # Cache unique attributes.
         for key, field in cls.__fields__.items():
             if field.field_info.extra.get("unique", False):
                 value = getattr(model, key)
-                self.models[cls][(key, value)] = model
+                self.uniques[(cls, key, value)] = model
 
         # Cache the linked models.
         pkey = cls.get_primary_key_from_model(model)
@@ -87,9 +88,13 @@ class Cache:
             model (subclass of Model): the model or None.
 
         """
-        model_class = model_class.base_model
+        base = model_class.base_model
         for key, value in kwargs.items():
-            return self.models.get(model_class, {}).get((key, value))
+            obj = self.models.get(base, {}).get((key, value))
+            if obj is None:
+                obj = self.uniques.get((model_class, key, value))
+
+            return obj
 
     def delete(
         self, model: Model, linked_callback: Callable[[Model, str], None]
@@ -112,6 +117,12 @@ class Cache:
         self.models.get(base, {}).pop(
             cls.get_primary_keys_from_model(model, as_tuple=True), False
         )
+
+        # Remove unique fields.
+        for key, field in cls.__fields__.items():
+            if field.field_info.extra.get("unique", False):
+                value = getattr(model, key)
+                self.uniques.pop((cls, key, value), False)
 
         # Update the linked references.
         linked = self.linked_cache.pop((cls, pkey), [])

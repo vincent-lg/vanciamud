@@ -192,7 +192,45 @@ class RandomGenerator:
         return code
 
     @classmethod
-    def _check_next_from_DB(cls, code: str):
+    def record(cls, code: str):
+        """Record a code that shouldn't be generated afterwards.
+
+        Args:
+            code (str): the code to record.
+
+        In order to check the validity of this code, the database is read
+        for each part.
+
+        Raises:
+            ValueError: the code is invalid.
+
+        """
+        valid = ""
+        trail = []
+        while len(valid) != len(cls.patterns):
+            choices = cls._check_next_from_DB(valid)
+
+            # Test allowed options (check the rules).
+            for part in tuple(choices):
+                if not cls.is_allowed(valid + part):
+                    choices.discard(part)
+
+            next_part = code[len(valid)]
+            if next_part not in choices:
+                raise ValueError(
+                    f"the next character [{len(valid)}] is not valid: "
+                    f"it should be {next_part!r} but only "
+                    f"{choices} are allowed"
+                )
+
+            choices.discard(next_part)
+            trail.append((valid, choices))
+            valid += next_part
+
+        cls._save_trail(trail)
+
+    @classmethod
+    def _check_next_from_DB(cls, code: str) -> set[str]:
         choices = Generator.select(
             (Generator.table.name == cls.__name__)
             & (Generator.table.current == code)

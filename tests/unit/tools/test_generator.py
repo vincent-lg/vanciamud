@@ -38,7 +38,33 @@ def test_generate_overflow_without_rules(db):
         LittleGenerator.generate()
 
 
-class LittleGenerator(RandomGenerator):
+def test_record_and_generate_without_rules(db):
+    db.bind({Generator})
+    prior = "01A"
+    LittleGenerator.record(prior)
+    codes = []
+    for _ in range(7):
+        code = LittleGenerator.generate()
+        assert len(code) == 3
+        assert code[0] in "01"
+        assert code[1] in "01"
+        assert code[2] in "AB"
+        assert code not in codes
+        assert code != prior
+        codes.append(code)
+
+
+def test_record_and_generate_overflow_without_rules(db):
+    db.bind({Generator})
+    LittleGenerator.record("01A")
+    for _ in range(7):
+        LittleGenerator.generate()
+
+    with pytest.raises(ValueError):
+        LittleGenerator.generate()
+
+
+class LittleGeneratorWithDash(RandomGenerator):
 
     """A little generator with only three patterns and no rules."""
 
@@ -54,7 +80,7 @@ def test_generate_without_rules(db):
     db.bind({Generator})
     codes = []
     for _ in range(8):
-        code = LittleGenerator.generate()
+        code = LittleGeneratorWithDash.generate()
         assert len(code) == 4
         assert code[0] in "01"
         assert code[1] in "01"

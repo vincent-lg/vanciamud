@@ -95,13 +95,17 @@ class ObjectPrototype(Node):
         return name
 
     def create_object_in(
-        self, location: Node, barcode: str | None = None
+        self, location: Node, barcode: str | None = None, setup: bool = True
     ) -> Node:
         """Create a new object based on this prototype.
 
         Args:
             location (Room or container): the new object's future location.
             barcode (str, optional): the barcode to use.
+            setup (bool): if True (default), setup the types of the new object.
+                    Note that the types will be added regardless, but
+                    if `setup` is `False`, `type.setup_object` will not
+                    be called on individual types.
 
         Returns:
             object (Object): the new object.
@@ -132,5 +136,10 @@ class ObjectPrototype(Node):
         for name, _ in self.types:
             obj.types.add(name, quiet=True, save=False)
         obj.types.save()
+
+        # Setup the individual types.
+        if setup:
+            for _, o_type in obj.types:
+                o_type.setup_object()
 
         return obj

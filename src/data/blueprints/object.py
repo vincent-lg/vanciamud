@@ -59,7 +59,17 @@ class ObjectBlueprint(BlueprintModel):
             location = definition.pop("location", None)
             if location is not None:
                 location = Room.get(barcode=location)
-            obj = prototype.create_object_in(location, barcode=barcode)
+            obj = prototype.create_object_in(
+                location, barcode=barcode, setup=False
+            )
             logger.info(f"Create {obj!r} in {location!r}")
-            for _, o_type in obj.types:
-                o_type.setup_object(**definition)
+            for type_def in definition.pop("types", []):
+                type_name = type_def.pop("type", None)
+                if type_name is None:
+                    continue
+
+                o_type = obj.types.get(type_name)
+                if o_type is None:
+                    continue
+
+                o_type.setup_object(**type_def)

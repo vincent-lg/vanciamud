@@ -100,7 +100,11 @@ class TypeHandler(BaseHandler):
         return self._names.get(type_name.lower())
 
     def add(
-        self, type_name: str, quiet: bool = False, save: bool = True
+        self,
+        type_name: str,
+        quiet: bool = False,
+        save: bool = True,
+        setup: bool = True,
     ) -> None:
         """Add a type to this prototype or object.
 
@@ -109,6 +113,9 @@ class TypeHandler(BaseHandler):
             quiet (bool): if True and the type doesn't exist,
                     raise an exception.
             save (bool): if True (the default), save in the database.
+            setup (bool): if True (default), setup the individual object types.
+                    Note that if `False`, the types are still copied but
+                    not setup.
 
         """
         self._load_types()
@@ -133,7 +140,13 @@ class TypeHandler(BaseHandler):
                         "this type is stackable"
                     )
             else:
-                instance = o_type(self.prototype, self.object)
+                if prototype := self.prototype:
+                    obj = None
+                else:
+                    obj = self.object
+                    prototype = obj.prototype
+
+                instance = o_type(prototype, obj)
                 self._names[type_name] = instance
 
                 if save:
@@ -142,6 +155,11 @@ class TypeHandler(BaseHandler):
                 if prototype := self.prototype:
                     for obj in prototype.objects:
                         obj.types.add(type_name, quiet=quiet, save=save)
+
+                    # Setup the individual types.
+                    if setup:
+                        for _, o_type in obj.types:
+                            o_type.setup_object()
 
         return instance
 
@@ -175,7 +193,9 @@ class TypeHandler(BaseHandler):
 
             instance = self.get(type_name)
             if instance is None:
-                instance = self.add(type_name, quiet=True, save=False)
+                instance = self.add(
+                    type_name, quiet=True, save=False, setup=False
+                )
             instance.setup_prototype(**definition)
 
         if types:
@@ -186,5 +206,12 @@ class TypeHandler(BaseHandler):
         for key, value in tuple(self._names.items()):
             if value is None:
                 o_type = TypeMetaclass.types.get(key)
-                instance = o_type(self.prototype, self.object)
+
+                if prototype := self.prototype:
+                    obj = None
+                else:
+                    obj = self.object
+                    prototype = obj.prototype
+
+                instance = o_type(prototype, obj)
                 self._names[key] = instance

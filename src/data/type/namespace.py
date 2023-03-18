@@ -45,7 +45,7 @@ class TypeNamespace(ProxyNamespace):
 
     def store_on(self, type):
         """Return the object with a namespace."""
-        return type.prototype or type.object
+        return type.object or type.prototype
 
     @property
     def key_pattern(self):

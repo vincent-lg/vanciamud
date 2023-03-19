@@ -134,4 +134,5 @@ class Cache:
     def clear(self):
         """Clear the cache."""
         self.models.clear()
+        self.uniques.clear()
         self.linked_cache.clear()

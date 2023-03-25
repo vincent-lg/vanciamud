@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -28,21 +28,15 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from command import Command
-from service.game import PORTAL_COMMANDS
 
 
-class Shutdown(Command):
+class Room(Command):
 
-    """Command to shutdown the game.
+    """Command to manipulate, create and find rooms.
 
     Usage:
-        shutdown
+      room list
 
     """
 
-    can_shorten = False
-
-    def run(self, args):
-        """Run the command."""
-        self.msg("Preparing to stop the game and portal.")
-        PORTAL_COMMANDS.put_nowait(("stop_portal", {}))
+    name = "room"

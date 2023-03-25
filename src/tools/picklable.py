@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,22 +27,33 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from command import Command
-from service.game import PORTAL_COMMANDS
+
+"""Module containing utilities to transform a collection."""
+
+import pickle
+from typing import Any
 
 
-class Shutdown(Command):
+def picklable_dict(origin: dict[Any, Any]) -> dict[Any, Any]:
+    """Keep the values that can be pickled from a dictionary.
 
-    """Command to shutdown the game.
+    Args:
+        origin (dict): the origin dictionary.
 
-    Usage:
-        shutdown
+    Returns:
+        can_be_pickled (dict): a dictionary.
+
+    Values that cannot be pickled will not be present in the
+    returned dictionary.
 
     """
+    safe = {}
+    for key, value in origin.items():
+        try:
+            pickle.dumps((key, value))
+        except TypeError:
+            pass
+        else:
+            safe[key] = value
 
-    can_shorten = False
-
-    def run(self, args):
-        """Run the command."""
-        self.msg("Preparing to stop the game and portal.")
-        PORTAL_COMMANDS.put_nowait(("stop_portal", {}))
+    return safe

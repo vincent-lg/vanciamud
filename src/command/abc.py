@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,22 +27,22 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from command import Command
-from service.game import PORTAL_COMMANDS
+
+"""Module containing the CommandMetaclass class."""
+
+from typing import Any
 
 
-class Shutdown(Command):
+class CommandMetaclass(type):
 
-    """Command to shutdown the game.
+    """Command metaclass."""
 
-    Usage:
-        shutdown
+    def __new__(
+        cls, name: str, bases: tuple[type], attrs: dict[str, Any]
+    ) -> type:
+        new_cls = super().__new__(cls, name, bases, attrs)
+        new_cls.sub_commands = set()
+        if parent := new_cls.parent:
+            parent.sub_commands.add(new_cls)
 
-    """
-
-    can_shorten = False
-
-    def run(self, args):
-        """Run the command."""
-        self.msg("Preparing to stop the game and portal.")
-        PORTAL_COMMANDS.put_nowait(("stop_portal", {}))
+        return new_cls

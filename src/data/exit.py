@@ -29,50 +29,13 @@
 
 """The exit object, a link."""
 
-from enum import Enum
 from typing import TYPE_CHECKING
 
+from data.direction import Direction
 from data.base.link import Field, Link
 
 if TYPE_CHECKING:
     from data.character import Character
-
-
-class Direction(Enum):
-
-    """Direction enumeration."""
-
-    INVALID = "invalid"
-    EAST = "east"
-    SOUTHEAST = "southeast"
-    SOUTH = "south"
-    SOUTHWEST = "southwest"
-    WEST = "west"
-    NORTHWEST = "northwest"
-    NORTH = "north"
-    NORTHEAST = "northeast"
-    DOWN = "down"
-    UP = "up"
-
-    @property
-    def opposite(self):
-        """Return the opposite exit."""
-        return _OPPOSITES[self]
-
-
-_OPPOSITES = {
-    Direction.EAST: Direction.WEST,
-    Direction.SOUTHEAST: Direction.NORTHWEST,
-    Direction.SOUTH: Direction.NORTH,
-    Direction.SOUTHWEST: Direction.NORTHEAST,
-    Direction.WEST: Direction.EAST,
-    Direction.NORTHWEST: Direction.SOUTHEAST,
-    Direction.NORTH: Direction.SOUTH,
-    Direction.NORTHEAST: Direction.SOUTHWEST,
-    Direction.DOWN: Direction.UP,
-    Direction.UP: Direction.DOWN,
-    Direction.INVALID: Direction.INVALID,
-}
 
 
 class Exit(Link):

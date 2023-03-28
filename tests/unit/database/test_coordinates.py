@@ -2,6 +2,7 @@ import pytest
 
 from data.base.coordinates import Coordinates
 from data.base.node import Field, Node
+from data.exit import Direction
 from data.handler.coordinates import CoordinateHandler
 
 
@@ -205,3 +206,25 @@ def test_around_order(db):
     distances = center.coordinates.around(1.5)
     close = [room for _, room in distances]
     assert close.index(east) < close.index(northeast)
+
+
+def test_project(db):
+    """Test to project."""
+    db.bind({Coordinates, Room})
+    east = Room.create(barcode="east", title="The east")
+    east.coordinates.update(1, 0, 0)
+    coordinates = (
+        (Direction.EAST, 2, 0, 0),
+        (Direction.SOUTHEAST, 2, -1, 0),
+        (Direction.SOUTH, 1, -1, 0),
+        (Direction.SOUTHWEST, 0, -1, 0),
+        (Direction.WEST, 0, 0, 0),
+        (Direction.NORTHWEST, 0, 1, 0),
+        (Direction.NORTH, 1, 1, 0),
+        (Direction.NORTHEAST, 2, 1, 0),
+        (Direction.DOWN, 1, 0, -1),
+        (Direction.UP, 1, 0, 1),
+    )
+
+    for direction, x, y, z in coordinates:
+        assert east.coordinates.project(direction) == (x, y, z)

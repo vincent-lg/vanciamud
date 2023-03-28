@@ -34,11 +34,24 @@ from typing import Type
 
 from sqlalchemy import func
 
-from data.base.coordinates import Coordinates
+from data.base.coordinates import Coordinates, closure
 from data.base.node import Node
+from data.direction import Direction
 from data.handler.abc import BaseHandler
 
 # Constants
+DIRECTIONS = {
+    Direction.EAST: closure({"x": 1}),
+    Direction.SOUTHEAST: closure({"x": 1, "y": -1}),
+    Direction.SOUTH: closure({"y": -1}),
+    Direction.SOUTHWEST: closure({"x": -1, "y": -1}),
+    Direction.WEST: closure({"x": -1}),
+    Direction.NORTHWEST: closure({"x": -1, "y": 1}),
+    Direction.NORTH: closure({"y": 1}),
+    Direction.NORTHEAST: closure({"x": 1, "y": 1}),
+    Direction.DOWN: closure({"z": -1}),
+    Direction.UP: closure({"z": 1}),
+}
 PRECISION = 5
 
 
@@ -267,6 +280,50 @@ class CoordinateHandler(BaseHandler):
             sqrt((x - self.x) ** 2 + (y - self.y) ** 2 + (z - self.z) ** 2),
             PRECISION,
         )
+
+    def project(
+        self,
+        direction: Direction,
+        units: int | float = 1,
+        x: int | float | None = None,
+        y: int | float | None = None,
+        z: int | float | None = None,
+    ) -> tuple[int | float, int | float, int | float]:
+        """Project a set of coordinates in a given direction.
+
+        WARNING:
+            this method SHOULD NOT be used for movement.  It can
+            be used for builders, however, particularly when adding
+            rooms that usually have static coordinates.  `units` is NOT
+            an indicator of distance, rather, it is an indicator of
+            the number of operations to perform on the coordinates.
+            For instance, projecting the room northeast of (0, 0, 0)
+            will return (1, 1, 0).  The distance between (0, 0, 0)
+            and (1, 1, 0) is not 1 (it is around 1.41)  If you need
+            to simulate movement of a set of coordinates, do not
+            use this method.
+
+        Args:
+            direction (Direction): the direction to project.
+            units (int): the number of units to project.  By default, it is 1.
+            x (int or float, optional): the overridden X coordinate.
+            y (int or float, optional): the overridden Y coordinate.
+            z (int or float, optional): the overridden Z coordinate.
+
+        Returns:
+            projected (X, Y, Z): the project coordinates.
+
+        """
+        self._fetch_coordinates()
+        if any(c is None for c in (x, y, z)):
+            x, y, z = self.x, self.y, self.z
+
+        closure = DIRECTIONS.get(direction)
+        if closure is None:
+            raise ValueError(f"cannot project ({x}, {y}, {z}) in {direction}")
+
+        x, y, z = closure(units, x, y, z)
+        return x, y, z
 
     def update(self, x: int | float, y: int | float, z: int | float) -> None:
         """Update all three coordinates in a row.

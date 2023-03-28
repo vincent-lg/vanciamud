@@ -71,6 +71,8 @@ if room.coordinates: # Valid
 
 """
 
+from typing import Callable
+
 from data.base.model import Field, Model
 
 
@@ -84,3 +86,42 @@ class Coordinates(Model):
     y: float
     z: float
     model: int = Field(unique=True)
+
+
+def closure(
+    modifications: dict[str, int | float]
+) -> Callable[[float, float, float, float], tuple[float, float, float]]:
+    """Create a closure for coordinates with modifications.
+
+    This is mostly functional: it will return a closure as a callable
+    taking the multiplier and original coordinates as parameters,
+    returning the modified coordinates.
+
+    Args:
+        modificaitons (dict): dictionary of modifications.
+
+    Returns:
+        closure (callable): a callable that takes the multiplier,
+                x y and z coordinates and returns
+                the modified coordinates.
+
+    """
+
+    def inner(
+        multiplier: int | float, x: int | float, y: int | float, z: int | float
+    ) -> tuple[int | float, int | float, int | float]:
+        coordinates = {"x": x, "y": y, "z": z}
+        for axis, mod in modifications.items():
+            coordinates[axis] = coordinates[axis] + multiplier * mod
+        return tuple(coordinates.values())
+
+    names = []
+    for axis, mod in modifications.items():
+        if mod > 0:
+            name = f"+{mod}"
+        else:
+            name = str(mod)
+        names.append(f"{axis}{name}")
+    names = ", ".join(names)
+    inner.__qualname__ = f"closure for {names}"
+    return inner

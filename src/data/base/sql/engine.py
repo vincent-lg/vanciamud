@@ -592,7 +592,9 @@ class SqliteEngine:
                     pass
                 else:
                     with self._load_model():
-                        setattr(model, attr.name, pickle.loads(attr.value))
+                        object.__setattr__(
+                            model, attr.name, pickle.loads(attr.value)
+                        )
 
             self._prepare_model(model)
             return model
@@ -675,6 +677,7 @@ class SqliteEngine:
         with self._load_model():
             rows = self.session.execute(statement).all()
 
+        already = set()
         models = []
         for row in rows:
             if path := getattr(row[0], "class_path", None):
@@ -707,11 +710,15 @@ class SqliteEngine:
                 # Build attributes.
                 for attr in external:
                     with self._load_model():
-                        setattr(model, attr.name, pickle.loads(attr.value))
+                        object.__setattr__(
+                            model, attr.name, pickle.loads(attr.value)
+                        )
 
             self._prepare_model(model)
-            if model not in models:
+            pkeys = tuple(pkeys.items())
+            if pkeys not in already:
                 models.append(model)
+                already.add(pkeys)
 
         return models
 
@@ -869,7 +876,7 @@ class SqliteEngine:
         new_value = pickle.loads(value)
         if old_value is not new_value:
             # Update the model.
-            setattr(model, key, new_value)
+            object.__setattr__(model, key, new_value)
 
     @contextmanager
     def _load_model(self):

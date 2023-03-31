@@ -37,6 +37,8 @@ class Quit(Command):
 
     """Quit the game."""
 
+    permissions = "player"
+
     def run(self):
         """Run the command."""
         self.msg("See you soon!")

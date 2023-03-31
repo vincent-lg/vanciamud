@@ -41,7 +41,7 @@ class Quit(Command):
 
     def run(self):
         """Run the command."""
-        self.msg("See you soon!")
+        self.msg("See you soon!", prompt=False)
         PORTAL_COMMANDS.put_nowait(
             ("disconnect_session", dict(session_id=self.session.uuid))
         )

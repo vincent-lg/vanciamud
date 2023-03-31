@@ -40,3 +40,6 @@ class Level(IntEnum):
     INFO = 2
     WARNING = WARN = 3
     ERROR = 4
+
+
+LEVELS = {level.name: level for level in Level}

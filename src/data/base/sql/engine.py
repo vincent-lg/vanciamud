@@ -54,6 +54,7 @@ another row on the same table.
 """
 
 from contextlib import contextmanager
+from itertools import count
 from pathlib import Path
 import pickle
 from queue import Queue
@@ -100,6 +101,8 @@ class SqliteEngine:
         self.locator = Locator(self)
         self.session = None
         self.loading = 0
+        self.transaction_counter = count(1)
+        self.current_transaction = None
 
     def init(
         self,
@@ -354,7 +357,6 @@ class SqliteEngine:
 
     def clear_cache(self):
         """Clear all the engine's cache."""
-        self.log("CLEAR CACHE")
         self.cache.clear()
         self.locator.clear()
         LazyPropertyDescriptor.memory.clear()

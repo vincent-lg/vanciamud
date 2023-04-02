@@ -63,13 +63,13 @@ class Service(BaseService):
         data = self.parent.services["data"]
 
         if settings.BLUEPRINT_AUTO_APPLY:
-            logger.info("Handling priority objects in blueprints")
+            logger.debug("Handling priority objects in blueprints")
             for blueprint in self.blueprints.values():
                 with data.engine.session.begin():
                     blueprint.apply()
 
             # Apply delayed blueprints.
-            logger.info("Handling delayed objects in blueprints")
+            logger.debug("Handling delayed objects in blueprints")
             for blueprint in self.blueprints.values():
                 with data.engine.session.begin():
                     blueprint.complete()

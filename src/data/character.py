@@ -38,6 +38,7 @@ from data.handler.namespace import NamespaceHandler
 from data.handler.permissions import PermissionHandler
 
 if TYPE_CHECKING:
+    from data.exit import Exit
     from data.room import Room
     from data.session import Session
 
@@ -76,3 +77,13 @@ class Character(Node):
         """
         if session := self.session:
             session.msg(text, prompt=prompt)
+
+    def move(self, exit: "Exit"):
+        """Move through an exit in the room.
+
+        Args:
+            exit (Exit): the exit to move through.
+
+        """
+        self.location = exit.destination
+        self.msg(self.location.look(self))

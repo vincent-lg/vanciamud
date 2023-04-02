@@ -31,7 +31,9 @@
 
 from typing import Any, Optional, TYPE_CHECKING
 
+from command.special.exit import ExitCommand
 from data.base.blueprint import logger
+from data.decorators import lazy_property
 from data.direction import Direction
 from data.exit import Exit
 from data.handler.abc import BaseHandler
@@ -64,6 +66,15 @@ class ExitHandler(BaseHandler):
                 exits.append(exit)
 
         return tuple(exits)
+
+    @lazy_property
+    def commands(self):
+        """Return the exit commands for this room."""
+        return self._refresh_commands()
+
+    @commands.setter
+    def commands(self, commands):
+        """Modify the dictionary of commands."""
 
     def get_visible_by(self, character: "Character") -> tuple[Exit]:
         """Only return visible exits by this character."""
@@ -127,6 +138,7 @@ class ExitHandler(BaseHandler):
             aliases=aliases or (),
         )
         self._exits[direction] = exit
+        self.commands = self._refresh_commands()
         self.save()
 
         if back:
@@ -184,9 +196,22 @@ class ExitHandler(BaseHandler):
                             aliases=aliases,
                             back=False,
                         )
-                        print(f"Create exit {direction} to {destination}")
                     else:
                         exit.destination = destination
                         exit.name = name
                         exit.aliases = aliases
-                        print(f"Update exit {direction} to {destination}")
+
+    def _refresh_commands(self) -> dict:
+        """Refresh the commands."""
+        commands = {}
+        for exit in self.all:
+            attrs = {
+                "name": exit.name,
+                "alias": exit.aliases,
+                "permissions": "",
+                "exit": exit,
+            }
+            command = type(exit.name, (ExitCommand,), attrs)
+            commands[exit.direction] = command
+
+        return commands

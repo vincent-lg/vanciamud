@@ -73,7 +73,17 @@ class Game(Context):
     def handle_input(self, user_input: str):
         """Route the user input to the context stack."""
         character = self.character
-        commands = root = list(Command.service.commands.values())
+        commands = []
+
+        # Add exit commands (specific to the room).
+        if (room := character.location) is not None:
+            if (exits := getattr(room, "exits", None)) is not None:
+                commands = list(exits.commands.values())
+
+        # Add all other commands (non-specific to location).
+        commands += list(Command.service.commands.values())
+
+        root = commands
         parent = command = method = None
         while commands:
             names = {}

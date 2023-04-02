@@ -29,11 +29,12 @@
 
 """Exit handler, to store room exits."""
 
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
-from data.handler.abc import BaseHandler
+from data.base.blueprint import logger
 from data.direction import Direction
 from data.exit import Exit
+from data.handler.abc import BaseHandler
 
 if TYPE_CHECKING:
     from data.character import Character
@@ -67,6 +68,16 @@ class ExitHandler(BaseHandler):
     def get_visible_by(self, character: "Character") -> tuple[Exit]:
         """Only return visible exits by this character."""
         return [exit for exit in self.all if exit.can_see(character)]
+
+    def get(self, direction: Direction) -> Exit | None:
+        """Return the exit room in this direction or None.
+
+        Args:
+            direction (Direction): the direction in which to test.
+
+        """
+        self.load_exits()
+        return self._exits.get(direction)
 
     def has(self, direction: Direction) -> bool:
         """Return whether this room has an exit in this direction.
@@ -137,3 +148,45 @@ class ExitHandler(BaseHandler):
             )
             exits = Exit.select(query)
             self._exits = {exit.direction: exit for exit in exits}
+
+    def from_blueprint(self, exits: Any) -> None:
+        """Create exits from a blueprint."""
+        room_cls = type(self.model[0])
+        for exit in exits:
+            match exit:
+                case {
+                    "direction": direction,
+                    "name": name,
+                    "destination": destination,
+                }:
+                    try:
+                        direction = Direction(direction)
+                    except ValueError as err:
+                        logger.warning(str(err))
+                        continue
+
+                    aliases = set(exit.get("aliases", direction.aliases))
+                    aliases.remove(name)
+                    destination = room_cls.get_or_none(barcode=destination)
+                    if destination is None:
+                        logger.warning(
+                            f"Cannot find the destination {destination} "
+                            f"for exit {direction.name}"
+                        )
+                        continue
+
+                    exit = self.get(direction)
+                    if exit is None:
+                        self.add(
+                            direction,
+                            destination,
+                            name,
+                            aliases=aliases,
+                            back=False,
+                        )
+                        print(f"Create exit {direction} to {destination}")
+                    else:
+                        exit.destination = destination
+                        exit.name = name
+                        exit.aliases = aliases
+                        print(f"Update exit {direction} to {destination}")

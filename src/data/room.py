@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 
 from data.base.node import Field, Node
 from data.exit import Direction
+from data.handler.blueprints import BlueprintHandler
 from data.handler.description import DescriptionHandler
 from data.handler.exits import ExitHandler
 
@@ -46,6 +47,7 @@ class Room(Node):
 
     barcode: str = Field(bpk=True, default="unknown", unique=True)
     title: str = "no title"
+    blueprints: BlueprintHandler = Field(default_factory=BlueprintHandler)
     description: DescriptionHandler = Field(default_factory=DescriptionHandler)
     exits: ExitHandler = Field(default_factory=ExitHandler)
 

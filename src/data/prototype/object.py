@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING
 
 from data.base.node import Field, Node
 from data.decorators import lazy_property
+from data.handler.blueprints import BlueprintHandler
 from data.handler.namespace import NamespaceHandler
 from data.handler.types import TypeHandler
 from data.object import Object
@@ -48,6 +49,7 @@ class ObjectPrototype(Node):
     barcode: str = Field(default="unset", bpk=True, unique=True)
     singular: str = "an object"
     plural: str = "objects"
+    blueprints: BlueprintHandler = Field(default_factory=BlueprintHandler)
     db: NamespaceHandler = Field(default_factory=NamespaceHandler)
     types: TypeHandler = Field(default_factory=TypeHandler)
 

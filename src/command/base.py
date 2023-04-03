@@ -183,6 +183,10 @@ class Command(metaclass=CommandMetaclass):
             can_run (bool): whether this character can run this command.
 
         """
+        if parent := cls.parent:
+            if not parent.can_run(character):
+                return False
+
         if cls.permissions:
             return character.permissions.has(cls.permissions)
 

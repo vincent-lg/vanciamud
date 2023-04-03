@@ -29,7 +29,7 @@
 
 """Exit handler, to store room exits."""
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, Type, TYPE_CHECKING
 
 from command.special.exit import ExitCommand
 from data.base.blueprint import logger
@@ -99,6 +99,30 @@ class ExitHandler(BaseHandler):
         """
         self.load_exits()
         return direction in self._exits
+
+    def get_commands_for(
+        self, character: "Character"
+    ) -> dict[Direction, Type[ExitCommand]]:
+        """Return a filtered dictionary of exit commands for a character.
+
+        Args:
+            character (Character): the character to filter.
+
+        Exits that are limited in terms of permissions will not appear,
+        so an exit command for a character that cannot traverse it will
+        not be created.
+
+        Returns:
+            commands (dict): a dictionary of {Direction: ExitCommand].
+                    Exits that can not be traversed by a character
+                    will not be present in this dictionary.
+
+        """
+        return {
+            direction: command
+            for direction, command in self.commands.items()
+            if self.get(direction).can_traverse(character)
+        }
 
     def add(
         self,

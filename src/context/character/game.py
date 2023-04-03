@@ -78,7 +78,7 @@ class Game(Context):
         # Add exit commands (specific to the room).
         if (room := character.location) is not None:
             if (exits := getattr(room, "exits", None)) is not None:
-                commands = list(exits.commands.values())
+                commands = list(exits.get_commands_for(character).values())
 
         # Add all other commands (non-specific to location).
         commands += list(Command.service.commands.values())
@@ -117,7 +117,11 @@ class Game(Context):
 
             # Add global aliases if theree's no parent.
             if parent is None:
-                sub_commands = [cls for cls in root if cls.parent is not None]
+                sub_commands = [
+                    cls
+                    for cls in root
+                    if cls.parent is not None and cls.can_run(character)
+                ]
                 for cls in sub_commands:
                     if alias := cls.global_alias:
                         if isinstance(alias, str):

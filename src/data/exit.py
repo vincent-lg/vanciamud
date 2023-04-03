@@ -69,6 +69,21 @@ class Exit(Link):
         Args:
             character (Character): the character trying to see this exit.
 
+        Returns:
+            can (bool): whether this character can see this exit.
+
+        """
+        return True
+
+    def can_traverse(self, character: "Character") -> bool:
+        """Return whether this exit can be traversed by this character.
+
+        Args:
+            character (Character): the character trying to traverse through.
+
+        Returns:
+            can (bool): whether this character can traverse through this exit.
+
         """
         return True
 

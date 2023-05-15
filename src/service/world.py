@@ -30,6 +30,7 @@
 """World service, here to handle blueprints."""
 
 from pathlib import Path
+from typing import Any
 
 from dynaconf import settings
 
@@ -37,6 +38,20 @@ import yaml
 
 from data.base.blueprint import Blueprint, logger
 from service.base import BaseService
+
+
+# Setup the YAML parser/representer.
+def str_presenter(dumper, data):
+    """Force using the | format with multiline strings."""
+    if len(data.splitlines()) > 1:  # check for multiline string
+        return dumper.represent_scalar(
+            "tag:yaml.org,2002:str", data, style="|"
+        )
+
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+yaml.add_representer(str, str_presenter)
 
 
 class Service(BaseService):
@@ -110,3 +125,24 @@ class Service(BaseService):
 
                     blueprint = Blueprint(bp_name, file_path, list(blueprint))
                     self.blueprints[bp_name] = blueprint
+
+    def update_document(
+        self, blueprint: str, document_id: int, definition: dict[str, Any]
+    ) -> None:
+        """Update and save a blueprint.
+
+        Args:
+            blueprint (str): the blueprint's unique name.
+            document_id (int): the document ID to update.
+            definition (dict): the new definition.
+
+        """
+        blueprint = self.blueprints[blueprint]
+        blueprint.update_document(document_id, definition)
+        documents = [
+            document.pop("document_id", True) and document
+            for document in [dict(d) for d in blueprint.content]
+        ]
+
+        with blueprint.file_path.open("w", encoding="utf-8") as file:
+            yaml.dump_all(documents, file, sort_keys=False, allow_unicode=True)

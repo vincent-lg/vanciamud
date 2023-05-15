@@ -53,6 +53,11 @@ class ObjectPrototype(Node):
     db: NamespaceHandler = Field(default_factory=NamespaceHandler)
     types: TypeHandler = Field(default_factory=TypeHandler)
 
+    @property
+    def stackable(self):
+        """Is this prototype stackable?"""
+        return self.types.stackable
+
     @lazy_property
     def used_barcodes(self) -> tuple[str]:
         """Return the list of currently-used object barcodes."""

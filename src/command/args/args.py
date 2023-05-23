@@ -33,7 +33,7 @@ from typing import Any, Optional, Union, TYPE_CHECKING
 
 from command.args.base import ARG_TYPES, Argument
 from command.args.error import ArgumentError
-from command.args.helpers import parse_all
+from command.args.helpers import parse_possibilities
 from command.args.group import Group
 from command.args.namespace import Namespace
 
@@ -98,6 +98,36 @@ class CommandArgs:
         self.arguments = []
         self.msg_invalid = "Invalid syntax."
 
+    def new(
+        self,
+        arg_type: str,
+        *args,
+        dest: Optional[str] = None,
+        optional: bool = False,
+        default: Any = _NOT_SET,
+        **kwargs,
+    ):
+        """Return a new argument not linked to the parser.
+
+        Args:
+            arg_type (str): the argument type.
+            dest (str, optional): the attribute name in the namespace.
+            optional (bool, optional): is this argument optional?
+
+        Additional positional or keyword arguments are sent to
+        the argument class.
+
+        """
+        arg_class = ARG_TYPES.get(arg_type)
+        if arg_class is None:
+            raise KeyError(f"invalid argument type: {arg_type!r}")
+
+        dest = dest or arg_type
+        argument = arg_class(
+            *args, dest=dest, optional=optional, default=default, **kwargs
+        )
+        return argument
+
     def add_argument(
         self,
         arg_type: str,
@@ -114,25 +144,42 @@ class CommandArgs:
             dest (str, optional): the attribute name in the namespace.
             optional (bool, optional): is this argument optional?
 
-        Additional keyword arguments are sent to the argument class.
+        Additional positional or keyword arguments are sent to
+        the argument class.
 
         """
-        arg_class = ARG_TYPES.get(arg_type)
-        if arg_class is None:
-            raise KeyError(f"invalid argument type: {arg_type!r}")
-
-        dest = dest or arg_type
-        argument = arg_class(
-            *args, dest=dest, optional=optional, default=default, **kwargs
+        argument = self.new(
+            arg_type, *args, dest=dest, optional=optional, **kwargs
         )
         self.arguments.append(argument)
         return argument
 
-    def add_group(self):
+    def add_group(self, role):
         """Add an argument group."""
-        group = Group(self)
+        group = Group(self, role)
         self.arguments.append(group)
         return group
+
+    def format(self) -> str:
+        """Return a string description of the arguments.
+
+        Args:
+            arguments (list of Argument): the list of arguments.
+
+        Returns:
+            description (str): the formatted text.
+
+        """
+        possibilities = [[]]
+        for arg in self.arguments:
+            possibilities = arg.expand(possibilities)
+
+        return "\n".join(
+            [
+                " ".join([arg.format() for arg in line])
+                for line in possibilities
+            ]
+        )
 
     def parse(
         self,
@@ -156,6 +203,10 @@ class CommandArgs:
             result (`Namespace` or `ArgumentError`): the parsed result.
 
         """
-        return parse_all(
-            self.arguments, character, string, begin, end, self.msg_invalid
+        possibilities = [[]]
+        for arg in self.arguments:
+            possibilities = arg.expand(possibilities)
+
+        return parse_possibilities(
+            possibilities, character, string, begin, end, self.msg_invalid
         )

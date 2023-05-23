@@ -53,6 +53,19 @@ class Keyword(Argument):
     def __repr__(self):
         return f"<Keyword {'/'.join(self.names)}>"
 
+    def format(self):
+        """Return a string description of the arguments.
+
+        Returns:
+            description (str): the formatted text.
+
+        """
+        text = "/".join(self.names)
+        if self.optional:
+            text = f"[{text}]"
+
+        return text
+
     def parse(
         self,
         character: "Character",
@@ -83,9 +96,12 @@ class Keyword(Argument):
             pos = string.find(f" {name} ", begin)
             if pos >= 0 and pos < end:
                 return Result(
-                    begin=begin + pos,
-                    end=begin + len(name) + 2 + pos,
+                    begin=pos,
+                    end=pos + len(name) + 2,
                     string=string,
                 )
 
         return ArgumentError(self.msg_cannot_find)
+
+    def add_to_namespace(self, result, namespace):
+        """Add the parsed search object to the namespace."""

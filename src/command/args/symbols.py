@@ -56,14 +56,29 @@ class Symbols(Argument):
         symbols: str,
         optional: bool = False,
         default: Optional[Any] = None,
+        dests: dict[str, Any] | None = None,
         **kwargs,
     ):
         super().__init__(optional=optional, default=default, **kwargs)
         self.symbols = symbols
+        self.dests = dests
         self.msg_absent = "You forgot to specify {symbols}."
 
     def __repr__(self):
         return "<Symbols>"
+
+    def format(self):
+        """Return a string description of the arguments.
+
+        Returns:
+            description (str): the formatted text.
+
+        """
+        text = self.symbols
+        if self.optional:
+            text = f"[{text}]"
+
+        return text
 
     def parse(
         self,
@@ -87,16 +102,23 @@ class Symbols(Argument):
         before_pos = string.find(self.symbols, begin)
         if before_pos != -1:
             after_pos = before_pos + len(self.symbols)
-            while before_pos > 0 and string[before_pos].isspace():
+            while before_pos > 1 and string[before_pos - 1].isspace():
                 before_pos -= 1
             if after_pos == -1:
                 after_pos = None
             else:
                 while (
-                    after_pos < len(string) - 1 and string[after_pos].isspace()
+                    after_pos < len(string) - 2
+                    and string[after_pos + 1].isspace()
                 ):
                     after_pos += 1
 
             return Result(begin=before_pos, end=after_pos, string=string)
 
         return ArgumentError(self.msg_absent.format(symbols=self.symbols))
+
+    def add_to_namespace(self, result, namespace):
+        """Add the parsed search object to the namespace."""
+        dests = self.dests or {}
+        for key, value in dests.items():
+            setattr(namespace, key, value)

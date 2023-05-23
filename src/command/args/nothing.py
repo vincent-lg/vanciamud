@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -27,61 +27,30 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Base argument."""
+"""Nothing argument."""
 
-from enum import Enum
 from typing import Optional, Union, TYPE_CHECKING
 
-from command.args.error import ArgumentError
-from command.args.result import Result
+from command.args.base import ArgSpace, Argument, ArgumentError, Result
 
 if TYPE_CHECKING:
     from data.character import Character
 
-ARG_TYPES = {}
 
+class Nothing(Argument):
 
-class ArgSpace(Enum):
+    """Nothing class for argument."""
 
-    """Enumeration to define the space this argument takes."""
+    name = "nothing"
+    space = ArgSpace.STRICT
+    in_namespace = False
 
-    UNKNOWN = 1  # Anything can be captured
-    STRICT = 2  # The command knows what to capture
-    WORD = 3  # The command will capture the first word
-
-
-class ArgMeta(type):
-
-    """Metaclass for arguments."""
-
-    def __init__(cls, name, bases, cls_dict):
-        if cls.name:
-            ARG_TYPES[cls.name] = cls
-
-
-class Argument(metaclass=ArgMeta):
-
-    """Base class for arguments."""
-
-    name = ""
-    space = ArgSpace.UNKNOWN
-    in_namespace = True
-
-    # To not override.
-    _NOT_SET = None
-
-    def __init__(self, dest, optional=False, default=None, **kwargs):
-        self.dest = dest
-        self.optional = optional
-        self.default = default
-        self.msg_mandatory = "You should specify a {argument}."
-
-    @property
-    def has_default(self):
-        return self.default is not self._NOT_SET
+    def __init__(self, dest, optional=True, default=None):
+        super().__init__(dest, optional=True, default=default)
+        self.msg_present = "You should not specify anything."
 
     def __repr__(self):
-        return f"<Arg {self.name}>"
+        return "NOTHING"
 
     def format(self):
         """Return a string description of the arguments.
@@ -90,26 +59,7 @@ class Argument(metaclass=ArgMeta):
             description (str): the formatted text.
 
         """
-        text = f"<{self.dest}>"
-
-        if self.optional:
-            text = f"[{text}]"
-
-        return text
-
-    def expand(self, possibilities: list[list["Argument"]]) -> None:
-        """Expand, if necessary, the list of arguments.
-
-        Args:
-            possibilities (list of list of arguments): the possibilities.
-
-        This method does not return anything but will mutate the list.
-
-        """
-        for possible in possibilities:
-            possible += [self]
-
-        return possibilities
+        return "|"
 
     def parse(
         self,
@@ -130,15 +80,12 @@ class Argument(metaclass=ArgMeta):
             result (Result or ArgumentError).
 
         """
-        if type(self).space is ArgSpace.WORD:
-            space_pos = string.find(" ", begin)
-            if space_pos != -1:
-                end = space_pos
-
-            return Result(begin=begin, end=end, string=string)
+        if string[begin:end].strip():
+            result = ArgumentError(self.msg_present)
         else:
-            return Result(begin=begin, end=end, string=string)
+            result = Result(begin=begin, end=end, string=string)
+
+        return result
 
     def add_to_namespace(self, result, namespace):
         """Add the parsed search object to the namespace."""
-        setattr(namespace, self.dest, result.portion)

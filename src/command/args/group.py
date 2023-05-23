@@ -29,15 +29,12 @@
 
 """Argument group, containing branches."""
 
-from typing import Optional, Union, TYPE_CHECKING
+from itertools import permutations, product
 
-from command.args.base import ArgSpace
-from command.args.branch import Branch
-from command.args.error import ArgumentError
-from command.args.result import Result
+from command.args.base import Argument, ArgSpace
 
-if TYPE_CHECKING:
-    from data.character import Character
+# Constants
+ROLES = ("|", "+")
 
 
 class Group:
@@ -57,77 +54,83 @@ class Group:
     space = ArgSpace.UNKNOWN
     in_namespace = True
 
-    def __init__(self, parser, optional=False):
+    def __init__(self, parser, role):
         self.name = "group"
         self.parser = parser
         self.branches = []
-        self.optional = optional
+        self.optional = False
         self.msg_error = "Invalid syntax."
         self.msg_mandatory = "You have to specify something."
-        self.default = ""
+        if role not in ROLES:
+            raise ValueError(
+                f"the role {role!r} isn't acceptable: valid values "
+                f"are {list(ROLES)}"
+            )
+        self.role = role
 
-    @property
-    def has_default(self):
-        """A group has a default value."""
-        return True
+    def add_branch(self, *args, run_in: str = "run") -> None:
+        """Add and fill a branch.
 
-    def add_branch(self, method_name: str) -> Branch:
-        """Add and return a new branch.
+        Positional arguments are new arguments and can be created using
+        the `new` method of the parser (like `args.new("keyword", ...)`).
 
-        Args:
-            method_name (str): the name of the method that will be
-                    run for this branch, on the command object.
-
-        Returns:
-            branch (Branch): the added branch.
-
-        """
-        branch = Branch(self, method_name)
-        self.branches.append(branch)
-        return branch
-
-    def parse(
-        self,
-        character: "Character",
-        string: str,
-        begin: int = 0,
-        end: Optional[int] = None,
-    ) -> Union[Result, ArgumentError]:
-        """Parse the argument.
-
-        Args:
-            character (Character): the character running the command.
-            string (str): the string to parse.
-            begin (int): the beginning of the string to parse.
-            end (int, optional): the end of the string to parse.
-
-        Returns:
-            result (Result or ArgumentError).
+        Keyword arguments:
+            method_name (str): name of the method to call for this branch.
 
         """
-        # Parse the several branches.  The aim is to select one
-        # branch... or none at all.
-        success = []
-        for branch in self.branches:
-            result = branch.parse(character, string, begin, end)
-            if isinstance(result, Result):
-                success.append((branch, result))
+        self.branches.append(list(args))
 
-        # If there's more than one success, retrieve the most limited one.
-        if len(success) > 1:
-            success = max(
-                success, key=lambda tup: len(tup[0]._args.arguments)
-            )[1]
-        elif len(success) == 1:
-            success = success[0][1]
+        for arg in args:
+            arg.run_in = run_in
 
-        if success:
-            return success
+    def format(self):
+        """Return a string description of the arguments.
 
-        return ArgumentError(self.msg_error)
+        Returns:
+            description (str): the formatted text.
 
-    def add_to_namespace(self, result, namespace):
-        """Add the result to the namespace."""
-        other = result.namespace
-        for key, value in other:
-            setattr(namespace, key, value)
+        """
+        if len(self.branches) > 1:
+            text = "("
+            text += f") {self.role} (".join(
+                [
+                    " ".join([arg.format() for arg in branch])
+                    for branch in self.branches
+                ]
+            )
+            text += ")"
+        else:
+            text = " ".join([arg.format() for arg in self.branches[0]])
+
+        return text
+
+    def expand(self, possibilities: list[list["Argument"]]) -> None:
+        """Expand, if necessary, the list of arguments.
+
+        Args:
+            possibilities (list of list of arguments): the possibilities.
+
+        This method does not return anything but will mutate the list.
+
+        """
+        if self.role == "|":
+            # One of the branches is required.
+            possibilities = [
+                old + new for old, new in product(possibilities, self.branches)
+            ]
+        elif self.role == "+":
+            # Several branches can be used.
+            branches = [
+                sum(cb, [])
+                for r in range(len(self.branches) + 1)
+                for cb in permutations(self.branches, r)
+            ]
+
+            possibilities = [
+                old + new for old, new in product(possibilities, branches)
+            ]
+
+        if not possibilities:
+            possibilities = self.branches
+
+        return possibilities

@@ -1,4 +1,4 @@
-# Copyright (c) 2022, LE GOFF Vincent
+# Copyright (c) 2023, LE GOFF Vincent
 # All rights reserved.
 
 # Redistribution and use in source and binary forms, with or without
@@ -29,12 +29,18 @@
 
 """Search argument."""
 
-from typing import Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from command.args.base import ArgSpace, Argument, ArgumentError, Result
+from data.search.group import Group
 
 if TYPE_CHECKING:
     from data.character import Character
+
+LOCATIONS = {
+    "room": lambda character: character.location,
+    "equipoment": lambda character: character,
+}
 
 
 class Search(Argument):
@@ -44,12 +50,10 @@ class Search(Argument):
     name = "search"
     space = ArgSpace.UNKNOWN
     in_namespace = True
-    _search = None
 
     def __init__(self, dest, optional=False, default=None):
         super().__init__(dest, optional=optional, default=default)
         self.search_in = None
-        self.only_one = False
         self.msg_cannot_find = "'{search}' cannot be found."
         self.msg_mandatory = "You should specify a name to search."
 
@@ -61,8 +65,8 @@ class Search(Argument):
         character: "Character",
         string: str,
         begin: int = 0,
-        end: Optional[int] = None,
-    ) -> Union[Result, ArgumentError]:
+        end: int | None = None,
+    ) -> Result | ArgumentError:
         """Parse the argument.
 
         Args:
@@ -75,12 +79,6 @@ class Search(Argument):
             result (Result or ArgumentError).
 
         """
-        search = type(self)._search
-        if search is None:
-            from data.search import search
-
-            type(self)._search = search
-
         end = len(string) if end is None else end
         attempt = string[begin:end]
 
@@ -89,29 +87,44 @@ class Search(Argument):
             if not self.optional:
                 return ArgumentError(self.msg_mandatory)
 
-        # Try searching for the result with this name
+        # Try searching for the result with this name.
         search_in = self.search_in
-        if callable(search_in):
-            search_in = search_in(character)
-        found = None
-        if attempt.strip():
-            found = search(attempt, limit_to=search_in)
+        search_in = (
+            isinstance(search_in, (list, tuple)) and search_in or [search_in]
+        )
+        nodes = []
+        for term in search_in:
+            node = None
+            term = LOCATIONS.get(term, term)
+            if callable(term):
+                node = term(character)
+            else:
+                raise ValueError(
+                    f"search_in: unknown value {term!r}.  This is not part "
+                    f"of the supported strings ({list(LOCATIONS.keys())}) "
+                    "and it is not a callable either"
+                )
 
-        if not found:
+            if node is not None:
+                nodes.append(node)
+
+        matches = []
+        if search := attempt.strip():
+            group = Group.get_for(character, *nodes)
+            matches = group.match(search)
+
+        if not matches:
             if attempt.strip():
                 return ArgumentError(
                     self.msg_cannot_find.format(search=attempt)
                 )
 
-        if self.only_one and found:
-            found = found[0]  # Ignore the others
-
         result = Result(begin, end, string)
-        result.value = found
+        result.value = matches
 
         return result
 
     def add_to_namespace(self, result, namespace):
-        """Add the parsed number to the namespace."""
+        """Add the parsed search object to the namespace."""
         value = result.value
         setattr(namespace, self.dest, value)

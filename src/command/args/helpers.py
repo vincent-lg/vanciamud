@@ -21,6 +21,48 @@ if TYPE_CHECKING:
     from data.character import Character
 
 
+def parse_possibilities(
+    possibilities: list[list[Argument]],
+    character: "Character",
+    string: str,
+    begin: int = 0,
+    end: Optional[int] = None,
+    syntax_error: str = "Invalid syntax.",
+) -> ArgumentError | Namespace:
+    """Try several possibilities.
+
+    Each possibility is a list of arguments.  This allows to sequencially
+    test branches.
+
+    Args:
+        possibilities (list lof list of arguments): the arguments to test.
+        character (Character): the character parsing the arguments.
+        string (str): the string to parse.
+        begin (int): the beginning of the string to parse.
+        end (int, optional): the end of the string to parse.
+        syntax_error (str): message to display if no match occurs.
+
+    Returns:
+        result (Namespace or ArgumentError): the parsed result.
+
+    """
+    results = [
+        parse_all(arguments, character, string, begin, end)
+        for arguments in possibilities
+    ]
+    successes = [result for result in results if isinstance(result, Namespace)]
+    if successes:
+        lines = zip(results, possibilities)
+        lines = [tup for tup in lines if tup[0]]
+        result, _ = max(
+            lines, key=lambda tup: len([a for a in tup[1] if not a.optional])
+        )
+    else:
+        result = ArgumentError(syntax_error)
+
+    return result
+
+
 def parse_all(
     arguments: Sequence[Argument],
     character: "Character",
@@ -68,8 +110,6 @@ def parse_all(
         ]
         if mandatory:
             return mandatory[0]
-
-        return errors[0]
 
     # Check that the string has been entirely parsed.
     if not has_entirely_parsed(results, string, begin, end):
@@ -193,11 +233,10 @@ def parse_arguments(
     """
     results = list(results)
     end = len(string) if end is None else end
-    for arg in arguments:
+    for i, arg in enumerate(arguments):
         if arg is None:
             continue
 
-        i = arguments.index(arg)
         if results[i] is not None:
             continue
 
@@ -224,7 +263,14 @@ def parse_arguments(
                 next_result = next_results[0]
                 t_end = next_result.begin
 
-        if t_begin == t_end and not arg.optional:
+        # Skip over spaces.
+        while t_end - 1 > t_begin:
+            if string[t_end - 1].isspace():
+                t_end -= 1
+            else:
+                break
+
+        if t_begin >= t_end and not arg.optional:
             results[i] = ArgumentError(
                 arg.msg_mandatory.format(argument=arg.name)
             )
@@ -265,6 +311,9 @@ def has_entirely_parsed(
 
     indices = list(range(begin, end))
     for result in results:
+        if not result:
+            continue
+
         r_begin = result.begin
         r_end = result.end
         r_begin = 0 if r_begin is None else r_begin
@@ -300,10 +349,9 @@ def create_namespace(
 
     """
     namespace = Namespace()
+    methods = set()
     for arg, result in zip(arguments, results):
-        if not arg.in_namespace:
-            continue
-
+        methods.add(getattr(arg, "run_in", "run"))
         if isinstance(result, DefaultResult):
             value = result.value
         elif not isinstance(result, Result):
@@ -316,5 +364,13 @@ def create_namespace(
             custom(result, namespace)
         else:
             setattr(namespace, arg.dest, value)
+
+    methods.discard("run")
+    if len(methods) > 1:
+        raise ValueError(
+            f"ambiguous method to execute: possibilities are {methods}"
+        )
+    elif methods:
+        setattr(namespace, "_run_in", methods.pop())
 
     return namespace

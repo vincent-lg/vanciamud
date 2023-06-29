@@ -60,7 +60,7 @@ class Game(Context):
 
     def get_prompt(self) -> str:
         """Return the active context prompt."""
-        return "HP: 100"
+        return ""
 
     def greet(self) -> str:
         """Return the active context's greeting."""
@@ -68,7 +68,7 @@ class Game(Context):
         if room:
             return room.look(self.character)
 
-        return "You are floating in the void..."
+        return "Vous flottez dans le vide, sans point de repère..."
 
     def handle_input(self, user_input: str):
         """Route the user input to the context stack."""
@@ -161,7 +161,7 @@ class Game(Context):
 
     def unknown_input(self, user_input: str) -> str:
         """What to do when the input doesn't match?"""
-        return f"Command not found: {user_input}"
+        return f"Command introuvable : {user_input}"
 
 
 def can_shorten(command: Command) -> bool:

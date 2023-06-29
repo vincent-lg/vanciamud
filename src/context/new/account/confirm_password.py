@@ -44,23 +44,20 @@ class ConfirmPassword(Context):
     """
 
     hide_input = True
-    prompt = "The password you just entered:"
+    prompt = "Le mot de passe que vous venez d'entrer :"
     text = """
-        Confirm your password.
-
-        In order to make sure that you have typed the right password,
-        you have to enter the same password again.
+        Veuillez confirmer le mot de passe que vous venez d'entrer
+        pour sécuriser votre compte.
     """
 
     def other_input(self, password: str):
         """The user entered something else."""
         if not Account.test_password(self.session.db.password, password):
             self.msg(
-                "This password isn't the same as the one you entered "
-                "at the previous step."
+                "Malheureusement, ce mot de passe ne correspond pas "
+                "à celui entré précédemment. Retour à l'étape précédente."
             )
             self.move("new.account.password")
             return
 
-        self.msg("Perfect!")
-        self.move("new.account.email")
+        self.move("new.account.complete")

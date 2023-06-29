@@ -43,14 +43,14 @@ class Home(Context):
 
     """
 
-    prompt = "Your username:"
+    prompt = "Entrez votre nom d'utilisateur :"
     text = """
-        If you already have an account, enter its username.
-        Otherwise, type 'new' to create a new account.
+        Si vous avez déjà un compte, entrez simplement son nom ici.
+        Sinon, entrez nouveau pour en créer un.
     """
 
-    def input_new(self):
-        """The user has input 'new' to create a new account."""
+    def input_nouveau(self):
+        """The user has input 'nouveau' to create a new account."""
         self.move("new.account.username")
 
     def other_input(self, username: str):
@@ -62,6 +62,6 @@ class Home(Context):
             self.move("connection.password")
         else:
             self.msg(
-                f"Sorry, {username} doesn't exist.  Type 'new' to "
-                "create a new account."
+                f"Malheureusement, {username} n'existe pas comme nom "
+                "de compte. Si vous souhaitez le créer, entrez nouveau."
             )

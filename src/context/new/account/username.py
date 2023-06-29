@@ -45,18 +45,10 @@ class Username(Context):
 
     """
 
-    prompt = "Your new username:"
+    prompt = "Votre nouveau nom d'utilisateur :"
     text = """
-        New user, welcome to TalisMUD!
-
-        You wish to create a new account.  The first step for you is
-        to create a username.  This username (and the password you will
-        select next) will be needed to access your characters.
-        You should choose both a username and password no one can easily
-        guess.
-
-        Keep your accout username and future characters' names different;
-        otherwise, it will make it much easier to steal your account.
+        Veuillez entre le nom de votre futur compte. Un personnage
+        du même nom sera également créé.
     """
 
     def other_input(self, username: str):
@@ -67,9 +59,9 @@ class Username(Context):
         # Check that the name isn't too short.
         if len(username) < min_size:
             self.msg(
-                f"The username {username!r} is incorrect.  It should be "
-                f"at least {min_size} characters in length.  "
-                "Please try again."
+                f"Le nom d'utilisateur {username!r} est incorrect. "
+                f"Il doit être de {min_size} caractères au minimum. "
+                "Veuillez essayer à nouveau."
             )
             return
 
@@ -78,11 +70,11 @@ class Username(Context):
         forbidden = [name.lower() for name in settings.FORBIDDEN_USERNAMES]
         if username in forbidden or account:
             self.msg(
-                f"The username {username!r} is forbidden.  Please "
-                "choose another one."
+                f"Le nom d'utilisateur {username!r} est interdit. Veuillez "
+                "en choisir un autre."
             )
             return
 
-        self.msg(f"You selected the username: {username!r}.")
+        self.msg(f"Vous avez choisi le nom d'utilisateur {username!r}.")
         self.session.db.username = username
         self.move("new.account.password")

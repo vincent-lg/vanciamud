@@ -43,11 +43,9 @@ class Password(Context):
     """
 
     hide_input = True
-    prompt = "Your account's password:"
+    prompt = "Le mot de passe de ce compte :"
     text = """
-        Account's password.
-
-        You now need to enter the password for this account.
+        Veuillez entrer le mot de passe protégeant ce compte.
     """
 
     def other_input(self, password: str):
@@ -56,15 +54,15 @@ class Password(Context):
         hashed_password = account.hashed_password
 
         if account.db.get("wrong_password"):
-            self.msg("Please wait, you can't retry your password just yet.")
+            self.msg("Veuilelz attendre, vous ne pouvez encore réessayer.")
             return
 
         if not account.test_password(hashed_password, password):
-            self.msg("Incorrect password.  Please wait.")
+            self.msg("Mot de passe invalide. Veuillez attendre un moment.")
             self.call_in(3, self.allow_new_password, account)
             return
 
-        self.move("player.choice")
+        self.move("player.login")
 
     def allow_new_password(self, account):
         """Allow to enter a new password."""

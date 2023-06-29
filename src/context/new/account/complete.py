@@ -31,6 +31,7 @@
 
 from context.base import Context
 from data.account import Account
+from data.player import Player
 
 
 class Complete(Context):
@@ -41,12 +42,19 @@ class Complete(Context):
         """Leave this context at once."""
         username = self.session.db.username
         password = self.session.db.password
-        email = self.session.db.email
         account = Account.create(
-            username=username, hashed_password=password, email=email
+            username=username, hashed_password=password
         )
         self.msg(
-            f"The account {username} has been created successfully.  Welcome!"
+            f"Le compte {username} a bien été créé, avec un personnage "
+            "du même nom."
         )
         self.session.db.account = account
-        self.move("player.choice")
+        player = Player.create(name=username.capitalize(), account=account)
+        account.players.append(player)
+
+        if Player.count() == 1:
+            player.permissions.add("admin")
+        else:
+            player.permissions.add("player")
+        self.move("player.login")

@@ -65,7 +65,7 @@ class Room(Node):
                 [exit.get_name_for(character) for exit in exits]
             )
         else:
-            exits = "There is no obvious exit."
+            exits = ""
 
         lines = []
 

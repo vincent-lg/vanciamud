@@ -29,9 +29,12 @@
 
 """Complete the account creation, a ghost context."""
 
+from dynaconf import settings
+
 from context.base import Context
 from data.account import Account
 from data.player import Player
+from data.room import Room
 
 
 class Complete(Context):
@@ -57,4 +60,7 @@ class Complete(Context):
             player.permissions.add("admin")
         else:
             player.permissions.add("player")
+        self.session.db.character = player
+        room = Room.get(barcode=settings.START_ROOM, raise_not_found=False)
+        player.room = room
         self.move("player.login")

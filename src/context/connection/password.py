@@ -62,6 +62,8 @@ class Password(Context):
             self.call_in(3, self.allow_new_password, account)
             return
 
+        player = account.players[0]
+        self.session.db.character = player
         self.move("player.login")
 
     def allow_new_password(self, account):

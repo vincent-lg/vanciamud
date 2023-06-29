@@ -7,7 +7,7 @@
 # 1. General configuration
 
 # The name of your game:
-name = "TalisMUD"
+name = "VanciaMUD"
 
 # The game version, can be shown in the Message-Of-The-Day screen if you wish.
 version = "0.0.1"
@@ -127,10 +127,10 @@ forbidden_character_names = [
 min_account_password = 6
 
 # Starting room for new characters, enter the room barcode (str)
-start_room = "begin"
+start_room = "demo"
 
 # Room if the character location has been destroyed while she was away
-return_room = "begin"
+return_room = "demo"
 
 # 5. Display settings
 

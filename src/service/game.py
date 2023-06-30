@@ -163,6 +163,12 @@ class Service(BaseService):
         with self.data.engine.session.begin():
             self.restore_delays()
 
+            for session in self.data.get_sessions():
+                if character := session.character:
+                    session.login(character, verbose=False)
+                    await self.mudio.send_output(input_id)
+                    await self.send_portal_commands()
+
     async def handle_stop_game(self, origin: Origin, game_id: str):
         """Stop this game process."""
         self.logger.info(f"The game of ID {game_id} is asked to stop.")
@@ -280,6 +286,8 @@ class Service(BaseService):
 
         with self.data.engine.session.begin():
             deletion = self.data.delete_session(session_id)
+            await self.mudio.send_output(0)
+            await self.send_portal_commands()
 
         await self.host.answer(origin, dict(deletion=deletion))
         await self.send_portal_commands()

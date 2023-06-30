@@ -131,15 +131,22 @@ class Service(BaseService):
         """Return, if found, the stored session with this UUID."""
         return Session.get(uuid=session_id, raise_not_found=False)
 
+    def get_sessions(self) -> list[Session]:
+        """Return the list of all sessions."""
+        return Session.all()
+
     def delete_session(self, session_id: UUID) -> Optional[Session]:
         """Delete, if found, the stored session with this UUID."""
         if session := self.get_session(session_id):
             logger.debug(f"The session {session_id} is to be deleted.")
             session.logout()
             Session.delete(session)
-            return True
+            success = True
+        else:
+            logger.warning(f"The session {session_id} cannot be found and deleted.")
+            success = False
 
-        return False
+        return success
 
     def log_query(self, statement: str, args: tuple[str]):
         """Log the specified query."""

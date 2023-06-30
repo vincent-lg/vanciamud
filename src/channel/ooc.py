@@ -37,5 +37,5 @@ class OOC(Channel):
 
     """OOC channel."""
 
-    alias = ["hrp",)
+    alias = ["hrp"]
     description: str = "Chat with all other players oocly"

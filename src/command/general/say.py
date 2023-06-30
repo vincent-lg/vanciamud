@@ -51,6 +51,6 @@ class Say(Command):
         for obj in room.locator.contents:
             if isinstance(obj, Character):
                 if obj is self.character:
-                    self.msg(f"Vous dites: {message}")
+                    self.msg(f"Vous dites : {message}")
                 else:
                     obj.msg(f"{self.character.name} dit : {message}")

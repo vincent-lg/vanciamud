@@ -105,7 +105,7 @@ class Session(Model):
         if isinstance(text, bytes):
             OUTPUT_QUEUE.put((self.uuid, text, {"prompt": prompt}))
 
-    def login(self, character: "Character") -> None:
+    def login(self, character: "Character", verbose: bool = False) -> None:
         """Login to a character."""
         self.character = character
         character.session = self
@@ -124,6 +124,11 @@ class Session(Model):
 
         if room:
             character.location = room
+            if verbose:
+                for obj in room.locator.contents:
+                    if hasattr(obj, "msg"):
+                        if obj is not character:
+                            obj.msg(f"{character.name} entre en jeu.")
 
         # Place the character in its subscribed channels.
         for channel in character.channels.subscribed:
@@ -132,4 +137,10 @@ class Session(Model):
     def logout(self):
         """Prepare the session for logout."""
         if character := self.character:
+            if room := character.location:
+                for obj in room.locator.contents:
+                    if hasattr(obj, "msg"):
+                        if obj is not character:
+                            obj.msg(f"{character.name} quitte le jeu.")
+
             (character.room, character.location) = (character.location, None)

@@ -70,16 +70,18 @@ class Locator:
         if nodes := self.contents.get(location_id):
             if filter is not None:
                 return [
-                    node for node in nodes if node.location_filter == filter
+                    node
+                    for node in nodes.keys()
+                    if node.location_filter == filter
                 ]
 
-            return nodes
+            return list(nodes.keys())
 
         nodes = self.engine.select_models(
             Node, SQLNode.location_id == location_id
         )
         nodes.sort(key=lambda node: node.location_index)
-        self.contents[location_id] = nodes
+        self.contents[location_id] = {node: 1 for node in nodes}
 
         if filter is not None:
             nodes = [node for node in nodes if node.location_filter == filter]
@@ -121,14 +123,16 @@ class Locator:
                 break
 
         if nodes := self.contents.get(old_location_id):
-            nodes.remove(node)
+            nodes.pop(node, 0)
 
         if nodes := self.contents.get(new_location_id):
-            node.location_index = max(n.location_index for n in nodes) + 1
-            nodes.append(node)
+            node.location_index = (
+                max(n.location_index for n in nodes.keys()) + 1
+            )
+            nodes[node] = 1
         else:
             node.location_index = 0
-            self.contents[new_location_id] = [node]
+            self.contents[new_location_id] = {node: 1}
 
         node.location_id = new_location_id
 

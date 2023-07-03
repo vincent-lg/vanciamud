@@ -44,6 +44,7 @@ from context.base import Context, CONTEXTS
 from context.log import logger as ctx_logger
 from data.session import Session, OUTPUT_QUEUE
 from service.base import BaseService
+from service.list import CHANNELS
 
 
 class Service(BaseService):
@@ -71,7 +72,7 @@ class Service(BaseService):
         self.output_lock = asyncio.Lock()
         self.contexts = {}
         self.commands = {}
-        self.channels = {}
+        self.channels = CHANNELS
         self.stats = []
 
     async def setup(self):
@@ -250,9 +251,6 @@ class Service(BaseService):
             f"{len(channels)} channel{s} {was} successfully loaded."
         )
         for channel in channels.values():
-            name = getattr(channel, "name", ...)
-            if name is ...:
-                channel.name = channel.__name__.lower()
             channel.create_commands()
 
         Channel.service = self

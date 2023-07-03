@@ -60,9 +60,11 @@ class Channel(metaclass=ChannelMetaclass):
 
     """
 
+    name: str = ""  # You can rename a channel.
     alias: str | Sequence[str] = ()
     permissions: str = ""
     description: str = "not set"
+    always_on: bool = False  # This channel is always available.
 
     # Don't replace this attribute:
     service: BaseService
@@ -83,22 +85,39 @@ class Channel(metaclass=ChannelMetaclass):
     @classmethod
     def create_commands(cls):
         """Create the commands for this channel."""
-        join = type(f"Join{cls.__name__}", (JoinChannel,), dict(channel=cls))
-        join.name = f"+{cls.name.lower()}"
-        join.permissions = cls.permissions
-        Command.service.commands[f"+join_{cls.name}"] = join
+        names = [cls.name]
+        alias = cls.alias
+        if isinstance(alias, str):
+            names.append(alias)
+        else:
+            names.extend(alias)
 
-        leave = type(
-            f"Leave{cls.__name__}", (LeaveChannel,), dict(channel=cls)
-        )
-        leave.name = f"-{cls.name.lower()}"
-        leave.permissions = cls.permissions
-        Command.service.commands[f"+leave_{cls.name}"] = leave
+        for name in names:
+            if not cls.always_on:
+                join = type(
+                    f"Join{name.capitalize()}",
+                    (JoinChannel,),
+                    dict(channel=cls),
+                )
+                join.name = f"+{name}"
+                join.permissions = cls.permissions
+                Command.service.commands[f"+join_{name}"] = join
 
-        use = type(f"Use{cls.__name__}", (UseChannel,), dict(channel=cls))
-        use.name = cls.name
-        use.permissions = cls.permissions
-        Command.service.commands[f"+use_{cls.name}"] = use
+                leave = type(
+                    f"Leave{name.capitalize()}",
+                    (LeaveChannel,),
+                    dict(channel=cls),
+                )
+                leave.name = f"-{name}"
+                leave.permissions = cls.permissions
+                Command.service.commands[f"+leave_{name}"] = leave
+
+            use = type(
+                f"Use{name.capitalize()}", (UseChannel,), dict(channel=cls)
+            )
+            use.name = name
+            use.permissions = cls.permissions
+            Command.service.commands[f"+use_{name}"] = use
 
     @classmethod
     def msg_from(cls, character: "Character", message: str):

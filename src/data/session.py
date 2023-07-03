@@ -41,6 +41,7 @@ from data.base.model import Field, Model
 from data.decorators import lazy_property
 from data.handler.namespace import NamespaceHandler
 from data.room import Room
+from service.list import CHANNELS
 
 if TYPE_CHECKING:
     from data.character import Character
@@ -128,6 +129,14 @@ class Session(Model):
         # Place the character in its subscribed channels.
         for channel in character.channels.subscribed:
             channel.subscribers.add(character)
+
+        # Automatically join `always_on` channels.
+        for channel in CHANNELS.values():
+            if not channel.always_on:
+                continue
+
+            if character not in channel.subscribers:
+                channel.subscribers.add(character)
 
     def logout(self):
         """Prepare the session for logout."""

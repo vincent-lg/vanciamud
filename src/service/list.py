@@ -27,23 +27,28 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""Centralized list of loaded data.
 
-"""Module containing the ChannelMetaclass class."""
+You can import and use an element of this module anywhere without
+circular imports.  These containers are populated by different services.
 
-from typing import Any
+List of containers:
+    CHANNELS: dictionary of loaded channels.
 
+Example:
+    # Anywhere in game...
+    from service.list import CHANNELS
+    for key, channel in CHANNELS.items():
+        # ...
 
-class ChannelMetaclass(type):
+"""
 
-    """Channel metaclass."""
+from typing import Type, TYPE_CHECKING
 
-    def __new__(
-        cls, name: str, bases: tuple[type], attrs: dict[str, Any]
-    ) -> type:
-        new_cls = super().__new__(cls, name, bases, attrs)
-        new_cls.subscribers = set()
+if TYPE_CHECKING:
+    from channel.base import Channel
 
-        if not new_cls.name:
-            new_cls.name = name.lower()
-
-        return new_cls
+## Channels
+# Dictionary of {key: channel class}.
+# Populated by the MudIO service.
+CHANNELS = {}

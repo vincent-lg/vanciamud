@@ -136,7 +136,7 @@ class Session(Model):
                 continue
 
             if character not in channel.subscribers:
-                channel.subscribers.add(character)
+                character.channels.add(channel)
 
     def logout(self):
         """Prepare the session for logout."""

@@ -64,6 +64,7 @@ class ChannelHandler(BaseHandler):
             channel (str or Channel): the channel to add.
 
         """
+        character, _ = self.model
         if isinstance(channel, str):
             path = channel
             channel = Channel.service.channels.get(path)
@@ -75,6 +76,8 @@ class ChannelHandler(BaseHandler):
         if path not in self._channels:
             self._channels.add(path)
             self.save()
+
+        channel.subscribers.add(character)
 
     def clear(self):
         """Remove all channels."""

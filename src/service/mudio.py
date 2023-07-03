@@ -250,7 +250,8 @@ class Service(BaseService):
         chn_logger.info(
             f"{len(channels)} channel{s} {was} successfully loaded."
         )
-        for channel in channels.values():
+        for path, channel in channels.items():
+            channel.path = path
             channel.create_commands()
 
         Channel.service = self

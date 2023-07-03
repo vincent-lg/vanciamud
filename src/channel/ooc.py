@@ -37,5 +37,7 @@ class OOC(Channel):
 
     """OOC channel."""
 
-    alias = ["hrp"]
+    name = "hrp"
+    alias = ["ooc"]
     description: str = "Chat with all other players oocly"
+    always_on: bool = True

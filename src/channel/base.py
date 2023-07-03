@@ -130,8 +130,8 @@ class Channel(metaclass=ChannelMetaclass):
         """
         for subscriber in cls.subscribers:
             if subscriber is character:
-                subscriber.msg(f"[{cls.name}] You say: {message}")
+                subscriber.msg(f"[{cls.name}] Vous dites : {message}")
             else:
                 subscriber.msg(
-                    f"[{cls.name}] {character.name} says: {message}"
+                    f"[{cls.name}] {character.name} dit : {message}"
                 )

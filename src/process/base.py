@@ -39,7 +39,8 @@ from subprocess import Popen, PIPE, run
 import sys
 from typing import Tuple
 
-from psutil import pid_exists
+import psutil
+
 
 from tools.logging.frequent import FrequentLogger
 
@@ -123,7 +124,12 @@ class Process(metaclass=ABCMeta):
             running (bool): whether the process is running or not.
 
         """
-        return pid_exists(pid)
+        running = False
+        if psutil.pid_exists(pid):
+            process = psutil.Process(pid)
+            running = process.status() != psutil.STATUS_ZOMBIE
+
+        return running
 
     def run_command(self, command: str) -> int:
         """Run the specified command, reutning its status.

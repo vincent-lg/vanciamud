@@ -122,7 +122,7 @@ class LocationHandler(BaseHandler):
         """
         model, _ = self.model
         if new_location is None:
-            model.location_id = None
+            type(model).engine.locator.remove(model)
         else:
             if self.is_stackable(model):
                 raise ValueError(

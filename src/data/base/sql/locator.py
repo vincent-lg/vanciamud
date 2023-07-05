@@ -88,6 +88,20 @@ class Locator:
 
         return nodes
 
+    def remove(self, node: "Node"):
+        """Remove the node from any location.
+
+        Args:
+            node (Node): the node.
+
+        """
+        old_location_id = node.location_id
+
+        if nodes := self.contents.get(old_location_id):
+            nodes.pop(node, 0)
+
+        node.location_id = None
+
     def move(
         self, node: "Node", new_location_id: int, filter: str | None = None
     ) -> None:
@@ -104,6 +118,10 @@ class Locator:
 
         """
         old_location_id = node.location_id
+
+        if old_location_id == new_location_id:
+            # Nothing to do, the node is already in this location.
+            return
 
         # First, check that the movement is allowed.
         # An object A cannot move inside B if B contains A.

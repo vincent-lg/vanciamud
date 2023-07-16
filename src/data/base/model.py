@@ -55,6 +55,16 @@ class Model(BaseModel, metaclass=ModelMetaclass):
             type(self).get_primary_keys_from_model(self, as_tuple=True)
         )
 
+    def __eq__(self, other: Any) -> bool:
+        eq = False
+        keys = type(self).get_primary_keys_from_model(self, as_tuple=True)
+        if isinstance(other, type(self)):
+            eq = keys == type(other).get_primary_keys_from_model(
+                other, as_tuple=True
+            )
+
+        return eq
+
     def __setattr__(self, key: str, value: Any) -> None:
         """Update the object."""
         cls_attr = getattr(type(self), key, None)

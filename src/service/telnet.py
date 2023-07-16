@@ -35,6 +35,7 @@ from datetime import datetime
 from io import BytesIO
 from itertools import count
 from ssl import create_default_context, Purpose
+from telnetlib import IAC, AYT
 from typing import Union
 from uuid import UUID, uuid4
 
@@ -202,6 +203,9 @@ class Service(CmdMixin, BaseService):
         addr = addr[0]
         while (session_id := uuid4()) in self.sessions:
             continue
+
+        loop = asyncio.get_running_loop()
+        loop.call_later(60, asyncio.create_task, self.send_AYT(session_id))
         session = await self.new_session(session_id, reader, writer, ssl, addr)
         self.logger.info(
             f"telnet{'(ssl)' if ssl else ''}: connection "
@@ -268,6 +272,24 @@ class Service(CmdMixin, BaseService):
             buffer.seek(0)
             buffer.truncate()
             buffer.write(unprocessed)
+
+    async def send_AYT(self, session_id: UUID) -> None:
+        """Send AYT Telnet query to the specified session every 60 seconds.
+
+        Args:
+            session_id (UUID): the session ID.
+
+        """
+        while session := self.sessions.get(session_id):
+            try:
+                async with self.writing_lock:
+                    session.writer.write(IAC + AYT)
+                    await session.writer.drain()
+            except ConnectionError:
+                await self.error_read(session)
+                break
+
+            await asyncio.sleep(60)
 
     async def error_read(self, session: "Session"):
         """An error occurred when reading from reader."""

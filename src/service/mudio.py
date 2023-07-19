@@ -287,6 +287,9 @@ class Service(BaseService):
             # At this point, messages have been sorted by session.
             for ssid, messages in to_send.items():
                 session = data.get_session(ssid)
+                if session is None:
+                    continue
+
                 options = [msg[1] for msg in messages]
                 messages = [msg[0] for msg in messages]
                 msg = b"\n".join(messages)

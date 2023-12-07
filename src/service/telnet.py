@@ -178,6 +178,11 @@ class Service(CmdMixin, BaseService):
             self.logger.exception(
                 "telnet: an error occurred when reading a stream:"
             )
+        finally:
+            if not writer.is_closing():
+                await writer.drain()
+                writer.close()
+                await writer.wait_closed()
 
     async def new_ssl_connection(
         self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -191,6 +196,11 @@ class Service(CmdMixin, BaseService):
             self.logger.exception(
                 "telnet: an error occurred when reading a stream:"
             )
+        finally:
+            if not writer.is_closing():
+                await writer.drain()
+                writer.close()
+                await writer.wait_closed()
 
     async def begin_reading_from(
         self,

@@ -178,6 +178,11 @@ class Service(CmdMixin, BaseService):
             await self.read_commands(reader, writer)
         except asyncio.CancelledError:
             pass
+        finally:
+            if not writer.is_closing():
+                await writer.drain()
+                writer.close()
+                await writer.wait_closed()
 
     async def broadcast(
         self, cmd_name: str, args: Optional[dict[str, Any]] = None

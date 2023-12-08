@@ -60,12 +60,17 @@ class Room(Node):
         """
         description = self.description.format()
         exits = self.exits.get_visible_by(character)
+        characters = [c for c in self.location.contents if hasattr(c, "name") and c is not character]
         if exits:
             exits = "Obvious exits: " + ", ".join(
                 [exit.get_name_for(character) for exit in exits]
             )
         else:
             exits = ""
+        if characters:
+            characters = ", ".join([c.name for c in characters])
+        else:
+            characters = "Il n'y a personne ici, pour l'heure."
 
         lines = []
 
@@ -81,6 +86,7 @@ class Room(Node):
             description,
             "",
             exits,
+            characters,
         ]
 
         return "\n".join(lines)

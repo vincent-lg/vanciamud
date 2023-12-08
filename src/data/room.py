@@ -68,7 +68,7 @@ class Room(Node):
         else:
             exits = ""
         if characters:
-            characters = ", ".join([c.name for c in characters])
+            characters = "Personnes présentes : " + ", ".join([c.name for c in characters])
         else:
             characters = "Il n'y a personne ici, pour l'heure."
 
